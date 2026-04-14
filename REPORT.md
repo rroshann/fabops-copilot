@@ -215,18 +215,22 @@ Resolution: the nightly bake writes both forecasts (to `fabops_forecasts`) and t
 
 ### 5.1 Metrics Table
 
-| # | Metric | Definition | Value / Status |
+| # | Metric | Definition | Value |
 |---|---|---|---|
-| 1 | **Forecast sMAPE (mean)** | Symmetric Mean Absolute Percentage Error, non-zero holdout months, Croston/SBA, 200 parts, 12-month horizon | **1.759** (real — MLflow run `459e80ed`) |
-| 1 | **Forecast sMAPE (p50)** | Median sMAPE across parts | **1.819** (real — same run) |
-| 1 | **Forecast sMAPE (p90)** | 90th-percentile sMAPE across parts | **2.000** (real — same run) |
-| 2 | **Agent task-success rate** | Cross-family Claude Haiku 4.5 judge score (1–5 rubric) on 30-question gold set; target >= 80% | Pending full eval run — Lambda env vars not yet set |
-| 3 | **Trajectory tool-selection accuracy** | Per-step: did agent pick the correct tool given state? Scored against `evals/gold_set.json` labeled trajectories | Pending — depends on agent invocation |
-| 4 | **Reflection recovery rate** | Fraction of runs where `verify` caught a wrong draft and retry produced a correct answer | Pending — requires batch eval run |
+| 1 | **Forecast sMAPE (mean)** | Symmetric Mean Absolute Percentage Error, non-zero holdout months, Croston/SBA, 200 parts, 12-month horizon | **1.759** (MLflow run `459e80ed`) |
+| 1 | **Forecast sMAPE (p50)** | Median sMAPE across parts | **1.819** (same run) |
+| 1 | **Forecast sMAPE (p90)** | 90th-percentile sMAPE across parts | **2.000** (same run) |
+| 2 | **Agent task-success rate** | Cross-family Claude Haiku 4.5 judge score (1–5 rubric) on the 18-question gold set; pass iff all three rubric dimensions ≥ 4; target ≥ 80% | **15/18 = 83.3%** (pass). Per-class: policy 6/6 (100%), demand 3/3 (100%), supply 6/9 (67%) |
+| 3 | **Trajectory tool-selection accuracy** | Expected 9-step tool sequence: `entry → check_policy_staleness → check_demand_drift → check_supply_drift → ground_in_disclosures → diagnose → prescribe_action → verify → finalize`. Measured from `fabops_audit` spine across the 15 passing runs | **100%** on passing runs (every pass executed all 9 nodes in order — verified via per-request audit query) |
+| 4 | **Reflection-triggered recovery rate** | Fraction of runs where the `verify` node rejected the first draft and the retry edge produced a correct answer bounded by `MAX_GEMINI_PRO_CALLS=6` | Not triggered on the 18-case gold run (Gemini 2.5 Pro's first-pass diagnoses passed verification in every case); the retry path is exercised only when verify scores < 4 |
 
-**Real numbers source:** MLflow run `459e80ed1f344df3a78a9924a94a0287`, parameters `model=croston_sba`, `n_parts=200`, `horizon_months=12`. Retrieved from `s3://fabops-copilot-artifacts/mlflow.db`.
+**Real numbers source:**
+- sMAPE metrics: MLflow run `459e80ed1f344df3a78a9924a94a0287`, parameters `model=croston_sba`, `n_parts=200`, `horizon_months=12`, retrieved from `s3://fabops-copilot-artifacts/mlflow.db`.
+- Task-success metric: `scripts/run_judge.py --set gold` run on 2026-04-14, total Anthropic cost $0.0354, cache at `evals/results/judge_cache.json`, full results at `evals/results/gold_run.json`.
 
-**Pending metrics blocker:** `fabops_agent_handler` returns HTTP 500 with `KeyError: 'GEMINI_API_KEY'` because Lambda environment variables have not been configured. The agent graph, all tool functions, the audit spine, and the API Gateway route are all wired and functional. Setting `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, and `LANGFUSE_PUBLIC_KEY` as Lambda env vars unblocks metrics 2–4 and the full end-to-end system.
+**Methodology note — gold set derivation:** the original 18-case gold set was hand-authored with ground-truth labels that reflected intent rather than the actual DynamoDB state. An audit-driven debug pass revealed that all 18 pre-baked policies had `staleness_days=0` (freshly computed by the nightly bake), so cases labeled as "policy-driven" were unfalsifiable by the agent. The gold set was subsequently regenerated via `scripts/regenerate_gold_set.py`, which reads `fabops_inventory`, `fabops_policies`, and `fabops_suppliers` for each part and derives `ground_truth_driver` deterministically from a fixed hierarchy (policy > supply > demand > healthy). `scripts/inject_gold_drift.py` injects controlled state into the three tables so the gold set has real 6/9/3 class balance (md5-based part→supplier hash collisions produced 9 supply cases instead of the intended 6). This approach eliminates label/state drift between synthetic data and eval truth — a category of bug the debug pass showed to be load-bearing for realistic eval metrics.
+
+**Supply class is the hardest class.** All three failures on the gold run are supply cases (gold-009, -010, -012). The agent correctly identifies policy-driven and demand-driven cases at 100% but misses 3/9 supply cases, most likely because the supply signal is distributed across two distinct tool outputs (`get_supplier_leadtime.trend_30d` and `get_industry_macro_signal.ipg_series`), and the Gemini 2.5 Pro diagnose prompt gives slightly less weight to supplier trend than to the macro series. This is the highest-leverage area for future prompt tuning via DSPy (Section 5.2).
 
 ### 5.2 DSPy Planner Optimization
 
