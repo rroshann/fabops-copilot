@@ -8,7 +8,6 @@ from typing import Optional
 
 from fabops.config import TABLE_FORECASTS
 from fabops.data.dynamo import query
-from fabops.tools._croston_numpy import compute_p90_stockout_date, croston
 from fabops.tools.base import Citation, ToolResult
 
 
@@ -29,11 +28,14 @@ def _compute_forecast_from_history(part_id: str, horizon: int) -> dict:
     """Fallback: load part history from carparts and run NumPy Croston.
 
     Only used on cache miss. Slow-ish but keeps runtime honest.
+    numpy and _croston_numpy are imported lazily here so the Lambda cold-start
+    import path does not fail when numpy is absent from the zip.
     """
     from fabops.data.carparts import load_carparts
+    from fabops.tools._croston_numpy import croston as _croston
     df = load_carparts()
     part_demand = df[df["part_id"] == part_id].sort_values("month")["demand"].tolist()
-    yhat, p10, p90 = croston(part_demand, horizon=horizon, variant="sba")
+    yhat, p10, p90 = _croston(part_demand, horizon=horizon, variant="sba")
     return {
         "forecast": yhat,
         "p10": p10,
@@ -67,7 +69,8 @@ def run(
         used_cache = False
 
     if on_hand is not None:
-        stockout = compute_p90_stockout_date(
+        from fabops.tools._croston_numpy import compute_p90_stockout_date as _compute_stockout
+        stockout = _compute_stockout(
             data["p90"], on_hand, start_month_iso=date.today().isoformat()
         )
         data.update(stockout)

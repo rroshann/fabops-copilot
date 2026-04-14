@@ -10,8 +10,16 @@ ZIP="$BUILD_DIR/runtime.zip"
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"
 
-# Install runtime deps into the build dir
-pip install -r requirements-runtime.txt --target "$BUILD_DIR" --quiet
+# Install runtime deps into the build dir targeting Lambda's Linux arm64 runtime.
+# --platform + --only-binary forces pip to download manylinux aarch64 wheels
+# instead of building/using macOS native extensions (pydantic_core, etc.).
+pip install -r requirements-runtime.txt \
+  --target "$BUILD_DIR" \
+  --platform manylinux2014_aarch64 \
+  --only-binary=:all: \
+  --implementation cp \
+  --python-version 3.9 \
+  --quiet
 
 # Copy our package
 cp -r fabops "$BUILD_DIR/fabops"

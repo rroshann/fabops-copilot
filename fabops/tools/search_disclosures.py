@@ -9,8 +9,6 @@ import time
 from typing import List, Optional
 
 import boto3
-import google.generativeai as genai
-import numpy as np
 
 from fabops.config import TABLE_EDGAR, AWS_REGION
 from fabops.tools.base import Citation, ToolResult
@@ -21,7 +19,9 @@ EMBED_MODEL = "models/text-embedding-004"
 _CHUNK_CACHE: Optional[List[dict]] = None
 
 
-def _embed_query(query: str) -> np.ndarray:
+def _embed_query(query: str) -> "np.ndarray":
+    import numpy as np
+    import google.generativeai as genai
     genai.configure(api_key=os.environ["GEMINI_API_KEY"])
     result = genai.embed_content(
         model=EMBED_MODEL,
@@ -43,7 +43,8 @@ def _load_all_chunks() -> List[dict]:
     return items
 
 
-def _cosine(a: np.ndarray, b: np.ndarray) -> float:
+def _cosine(a: "np.ndarray", b: "np.ndarray") -> float:
+    import numpy as np
     na = np.linalg.norm(a)
     nb = np.linalg.norm(b)
     if na == 0 or nb == 0:
@@ -71,6 +72,7 @@ def run(query: str, top_k: int = 5, date_from: Optional[str] = None) -> ToolResu
             latency_ms=(time.time() - t0) * 1000,
         )
 
+    import numpy as np
     qvec = _embed_query(query)
     hits = []
     for chunk in _CHUNK_CACHE:

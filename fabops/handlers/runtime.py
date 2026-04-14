@@ -1,25 +1,78 @@
-"""Runtime agent Lambda entry point (stub; LangGraph wired in Day 5).
+"""Runtime agent Lambda — invokes the LangGraph FabOps Copilot agent.
 
-This is the zipped, <50MB Lambda. It MUST NOT import statsforecast, pandas,
-numba, or mlflow. Heavy libs live in the container nightly Lambda.
+Reads POST body with {"query": "..."}. Returns the agent's final answer
+plus the audit trail and citations.
 """
 import json
 
+from fabops.agent.graph import get_graph
+from fabops.agent.state import AgentState
 from fabops.observability.audit import AuditWriter
 from fabops.observability.request_id import new_request_id
 
 
 def handler(event, context):
     request_id = new_request_id()
-    writer = AuditWriter(request_id)
-    writer.log_step(
-        node="runtime_stub",
-        args={"path": event.get("rawPath", "/")},
-        result={"msg": "runtime Lambda alive"},
-        latency_ms=0.0,
+    body = event.get("body") or "{}"
+    if isinstance(body, str):
+        try:
+            body = json.loads(body)
+        except json.JSONDecodeError:
+            body = {}
+    query = body.get("query", "")
+
+    if not query:
+        return _response(400, {"error": "query field required", "request_id": request_id})
+
+    # Single writer for this request so step_n increments monotonically,
+    # preventing the error row from overwriting the entry row in DynamoDB.
+    audit = AuditWriter(request_id)
+    audit.log_step(
+        node="runtime_entry", args={"query": query}, result={}, latency_ms=0.0
     )
+
+    try:
+        graph = get_graph()
+        initial_state = AgentState(request_id=request_id, user_query=query)
+        final_state = graph.invoke(initial_state)
+        # LangGraph returns a dict in some versions; normalize
+        if isinstance(final_state, dict):
+            answer = final_state.get("final_answer", "")
+            citations = final_state.get("citations", [])
+            diagnosis = final_state.get("diagnosis", {})
+            demand_check = final_state.get("demand_check", {})
+            step_n = final_state.get("step_n", 0)
+        else:
+            answer = final_state.final_answer or ""
+            citations = final_state.citations
+            diagnosis = final_state.diagnosis or {}
+            demand_check = final_state.demand_check or {}
+            step_n = final_state.step_n
+
+        return _response(200, {
+            "request_id": request_id,
+            "answer": answer,
+            "diagnosis": diagnosis,
+            "p90_stockout_date": demand_check.get("p90_stockout_date"),
+            "citations": citations,
+            "step_count": step_n,
+        })
+    except Exception as e:
+        audit.log_step(
+            node="runtime_error", args={"query": query}, result={},
+            latency_ms=0.0, error=str(e)
+        )
+        return _response(500, {"error": str(e), "request_id": request_id})
+
+
+def _response(status, body):
     return {
-        "statusCode": 200,
-        "headers": {"Content-Type": "application/json"},
-        "body": json.dumps({"request_id": request_id, "msg": "FabOps Copilot runtime alive"}),
+        "statusCode": status,
+        "headers": {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "POST,OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type",
+        },
+        "body": json.dumps(body),
     }
