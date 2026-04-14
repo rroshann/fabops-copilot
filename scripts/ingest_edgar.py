@@ -14,8 +14,9 @@ import json
 import os
 import time
 from datetime import date
+from decimal import Decimal
 from pathlib import Path
-from typing import Dict, List
+from typing import Any, Dict, List
 
 import boto3
 import google.generativeai as genai
@@ -215,6 +216,16 @@ def main():
 
     print("Writing to DynamoDB fabops_edgar_index...")
     ddb = boto3.resource("dynamodb", region_name="us-east-1").Table(DDB_TABLE)
+
+    def _to_decimal(v: Any) -> Any:
+        if isinstance(v, float):
+            return Decimal(str(v))
+        if isinstance(v, list):
+            return [_to_decimal(x) for x in v]
+        if isinstance(v, dict):
+            return {k: _to_decimal(x) for k, x in v.items()}
+        return v
+
     with ddb.batch_writer() as batch:
         for c in all_chunks:
             batch.put_item(Item={
@@ -224,7 +235,7 @@ def main():
                 "filing_date": c["filing_date"],
                 "sec_url": c["sec_url"],
                 "text": c["text"],
-                "embedding": c["embedding"],
+                "embedding": _to_decimal(c["embedding"]),
             })
     print(f"Done. {len(all_chunks)} chunks indexed.")
 
