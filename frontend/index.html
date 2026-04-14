@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>FabOps Copilot — Service-Parts Stockout Risk Agent</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="config.js"></script>
+</head>
+<body>
+  <header>
+    <h1>FabOps Copilot</h1>
+    <span class="subtitle">Service-Parts Stockout Risk Agent</span>
+  </header>
+
+  <main>
+    <section class="query-panel">
+      <label>Ask a question:</label>
+      <textarea id="query-input" rows="3"
+        placeholder="Why is part A7 about to stock out at the Taiwan fab, and what should I do?"></textarea>
+      <button id="ask-btn">Ask</button>
+      <div class="synthetic-label">
+        Inventory, supplier lead-times, and incident notes are synthetic.
+        Forecasts use the public Hyndman carparts benchmark. SEC filings are real Applied Materials disclosures.
+      </div>
+    </section>
+
+    <section class="results-panel" id="results" style="display:none">
+      <div class="card plan">
+        <h3>Agent Plan</h3>
+        <ol id="agent-plan"></ol>
+      </div>
+
+      <div class="card diagnosis">
+        <h3>Diagnosis</h3>
+        <div><strong>Primary driver:</strong> <span id="primary-driver">—</span></div>
+        <div><strong>P90 stockout date:</strong> <span id="stockout-date">—</span></div>
+        <div><strong>Confidence:</strong> <span id="confidence">—</span></div>
+      </div>
+
+      <div class="card citations">
+        <h3>Citations / Audit Trail</h3>
+        <ol id="citations-list"></ol>
+      </div>
+
+      <div class="card action">
+        <h3>Recommended Action</h3>
+        <div id="action-text">—</div>
+      </div>
+
+      <div class="card answer">
+        <h3>Full Answer</h3>
+        <pre id="answer-text"></pre>
+      </div>
+    </section>
+
+    <section class="loading" id="loading" style="display:none">
+      <div class="spinner"></div>
+      <div>Running agent — policy → demand → supply → diagnose → verify...</div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
