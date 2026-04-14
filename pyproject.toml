@@ -1,0 +1,17 @@
+[project]
+name = "fabops-copilot"
+version = "0.1.0"
+description = "Agentic LLM assistant for semiconductor service-parts supply-chain operations"
+requires-python = ">=3.9,<3.13"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.black]
+line-length = 100
+target-version = ["py39"]
