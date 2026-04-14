@@ -43,6 +43,7 @@ data/raw/
 data/interim/
 data/processed/
 data/edgar/
+data/carparts.csv
 *.parquet
 *.feather
 
