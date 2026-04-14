@@ -23,10 +23,9 @@ S3_EVALS: Final[str] = "fabops-copilot-evals"
 
 # LLM config
 GEMINI_FLASH_MODEL: Final[str] = "gemini-2.5-flash"
-# NOTE: gemini-2.5-pro is NOT on Google's free tier (daily quota = 0).
-# Until a billed-tier key is wired, diagnose/verify nodes run on Flash too.
-# Swap this back to "gemini-2.5-pro" once billing is enabled.
-GEMINI_PRO_MODEL: Final[str] = "gemini-2.5-flash"
+# Billing enabled on the Google AI key so we can use the full Pro model
+# for diagnose/verify. Flash still handles entry/routing.
+GEMINI_PRO_MODEL: Final[str] = "gemini-2.5-pro"
 CLAUDE_JUDGE_MODEL: Final[str] = "claude-haiku-4-5-20251001"
 
 # Agent caps (from spec Section 4.2)
