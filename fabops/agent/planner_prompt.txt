@@ -1,0 +1,128 @@
+{
+  "traces": [],
+  "train": [],
+  "demos": [
+    {
+      "augmented": true,
+      "query": "Why is part 10279876 at risk of stocking out at the Taiwan fab?",
+      "part_id": "10279876",
+      "fab_id": "taiwan",
+      "intent": "stockout_risk"
+    },
+    {
+      "augmented": true,
+      "query": "What's driving the inventory situation for part 10501478 at the Arizona fab?",
+      "part_id": "10501478",
+      "fab_id": "arizona-az",
+      "intent": "stockout_risk"
+    },
+    {
+      "augmented": true,
+      "query": "Is part 10501552 going to stock out at the Singapore fab?",
+      "part_id": "10501552",
+      "fab_id": "singapore",
+      "intent": "stockout_risk"
+    },
+    {
+      "augmented": true,
+      "query": "Explain the stockout risk for part 11046625 at the Dresden fab.",
+      "part_id": "11046625",
+      "fab_id": "dresden-de",
+      "intent": "stockout_risk"
+    },
+    {
+      "query": "What should we do about part 16270641 at the Santa Clara fab?",
+      "part_id": "16270641",
+      "fab_id": "santa-clara-ca",
+      "intent": "stockout_risk"
+    },
+    {
+      "query": "Is part 12570570 correctly managed at the Gloucester fab?",
+      "part_id": "12570570",
+      "fab_id": "gloucester-ma",
+      "intent": "stockout_risk"
+    },
+    {
+      "query": "What's happening with part 14095053 at the Taiwan fab?",
+      "part_id": "14095053",
+      "fab_id": "taiwan",
+      "intent": "stockout_risk"
+    },
+    {
+      "query": "What's the status of part 11515493 at the Austin fab?",
+      "part_id": "11515493",
+      "fab_id": "austin-tx",
+      "intent": "stockout_risk"
+    },
+    {
+      "query": "Should we reorder part 15383129 at the Gloucester fab?",
+      "part_id": "15383129",
+      "fab_id": "gloucester-ma",
+      "intent": "stockout_risk"
+    },
+    {
+      "query": "Diagnose the stockout risk for part 15317213 at the Dresden fab.",
+      "part_id": "15317213",
+      "fab_id": "dresden-de",
+      "intent": "stockout_risk"
+    },
+    {
+      "query": "Why might part 15314468 stock out at the Arizona fab?",
+      "part_id": "15314468",
+      "fab_id": "arizona",
+      "intent": "stockout_risk"
+    },
+    {
+      "query": "Should I expect a shortage of part 12766210 at the Singapore fab?",
+      "part_id": "12766210",
+      "fab_id": "singapore",
+      "intent": "stockout_risk"
+    },
+    {
+      "query": "Assess the supply risk for part 15337110 at the Austin fab.",
+      "part_id": "15337110",
+      "fab_id": "austin-tx",
+      "intent": "stockout_risk"
+    },
+    {
+      "query": "Review the risk for part 15383266 at the Kalispell fab.",
+      "part_id": "15383266",
+      "fab_id": "kalispell-mt",
+      "intent": "stockout_risk"
+    },
+    {
+      "query": "Forecast the stockout risk for part 11527537 at the Santa Clara fab.",
+      "part_id": "11527537",
+      "fab_id": "santa-clara-ca",
+      "intent": "stockout_risk"
+    },
+    {
+      "query": "What's the risk profile for part 12766084 at the Kalispell fab?",
+      "part_id": "12766084",
+      "fab_id": "kalispell-mt",
+      "intent": "stockout_risk"
+    }
+  ],
+  "signature": {
+    "instructions": "Extract part_id, fab_id, and intent from a user query.",
+    "fields": [
+      {
+        "prefix": "Query:",
+        "description": "${query}"
+      },
+      {
+        "prefix": "Part Id:",
+        "description": "${part_id}"
+      },
+      {
+        "prefix": "Fab Id:",
+        "description": "${fab_id}"
+      },
+      {
+        "prefix": "Intent:",
+        "description": "${intent}"
+      }
+    ]
+  },
+  "lm": null
+}
