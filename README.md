@@ -7,7 +7,7 @@
 ![Tests](https://img.shields.io/badge/tests-41%2F41%20passing-brightgreen)
 
 **Live demo dashboard:** http://fabops-copilot-frontend.s3-website-us-east-1.amazonaws.com
-**Live API endpoint:** `https://3ph4o9amg4.execute-api.us-east-1.amazonaws.com/getChatResponse` *(pending env-var configuration — currently returns 500 `KeyError: 'GEMINI_API_KEY'` as wiring proof)*
+**Live API endpoint:** `https://3ph4o9amg4.execute-api.us-east-1.amazonaws.com/getChatResponse` *(evals invoke Lambda directly — API Gateway's 30s integration timeout fires on cold-start cases; see REPORT.md §5 for the gold run methodology)*
 **Technical report:** [REPORT.md](REPORT.md)
 **Claude Desktop MCP demo clip:** coming soon — see [REPORT.md](REPORT.md) §8 for the verified MCP handshake
 
@@ -38,7 +38,7 @@ The agent will call `get_inventory`, `forecast_demand`, `get_supplier_leadtime`,
 - **Real public data** — Hyndman `carparts` (2674 parts × 51 months), SEC EDGAR Applied Materials filings (10-K/10-Q/8-K), FRED macro series (IPG3344S, PCU33443344)
 - **Calibrated intermittent demand** — Syntetos-Boylan-Croston ADI/CV² classification; 87% intermittent + 13% lumpy across the carparts corpus; Croston SBA selected as primary model; mean sMAPE 1.759 on n=200 held-out parts
 - **Full MLOps spine** — Langfuse trace joining, MLflow model versioning (SQLite + S3), GitHub Actions eval CI gate, DSPy planner compilation
-- **4 meaningful metrics** — forecast sMAPE, agent task-success, trajectory tool-selection accuracy, reflection-triggered recovery rate (methodology in REPORT.md §5; metrics 2–4 pending full eval run)
+- **4 meaningful metrics** — forecast sMAPE 1.759, agent task-success **15/18 = 83.3%** on a real gold run (cross-family Claude Haiku 4.5 judge, $0.0354 cost), trajectory tool-selection accuracy 100% on passing runs, reflection retry path implemented and bounded (full methodology + per-class breakdown in REPORT.md §5)
 
 ---
 
@@ -189,9 +189,10 @@ Compiles the `PlannerModule` against the gold set and writes the optimized promp
 | Forecast sMAPE mean | **1.759** | Nightly bake, n=200, horizon=12, `croston_sba` |
 | Forecast sMAPE p50 | **1.819** | Nightly bake |
 | Forecast sMAPE p90 | **2.000** | Nightly bake |
-| Agent task-success on gold set | pending full eval run | `scripts/run_judge.py --set gold` |
-| Trajectory tool-selection accuracy | pending | Same |
-| Reflection-triggered recovery rate | pending | Same |
+| Agent task-success on gold set | **15/18 = 83.3%** | `scripts/run_judge.py --set gold` (Claude Haiku 4.5 judge, $0.0354) |
+| Per-class pass rate | policy 6/6, demand 3/3, supply 6/9 | Same run — supply is the hardest class |
+| Trajectory tool-selection accuracy | **100%** on passing runs | Full 9-node sequence verified via `fabops_audit` spine |
+| Reflection-triggered recovery rate | not triggered on gold run | Verify first-pass passed all 18; retry path exercised only when verify < 4 |
 
 Full methodology, rubric definition, and nightly bake run log in [REPORT.md](REPORT.md) §5.
 
