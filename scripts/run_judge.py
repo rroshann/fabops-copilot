@@ -16,10 +16,13 @@ import sys
 from pathlib import Path
 from typing import Dict, List
 
+import boto3
 import requests
 from anthropic import Anthropic
 
-from fabops.config import CLAUDE_JUDGE_MODEL, ANTHROPIC_HARD_CAP_USD
+from fabops.config import AWS_REGION, CLAUDE_JUDGE_MODEL, ANTHROPIC_HARD_CAP_USD
+
+LAMBDA_FUNCTION_NAME = "fabops_agent_handler"
 
 RESULTS_DIR = Path("evals/results")
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -48,9 +51,32 @@ def trace_hash(response: Dict) -> str:
 
 
 def run_agent(api_url: str, query: str) -> Dict:
-    r = requests.post(api_url, json={"query": query}, timeout=120)
-    r.raise_for_status()
-    return r.json()
+    """Invoke the deployed agent Lambda directly (bypasses API Gateway).
+
+    Direct invoke avoids API Gateway's 30s HTTP API integration timeout on
+    cold-start cases. The agent still runs the full LangGraph loop — only
+    the transport layer differs. Set FABOPS_USE_HTTP=1 to force the HTTP
+    path through API Gateway instead (useful for smoke-testing routing).
+    """
+    if os.environ.get("FABOPS_USE_HTTP") == "1":
+        r = requests.post(api_url, json={"query": query}, timeout=120)
+        r.raise_for_status()
+        return r.json()
+
+    client = boto3.client("lambda", region_name=AWS_REGION)
+    resp = client.invoke(
+        FunctionName=LAMBDA_FUNCTION_NAME,
+        InvocationType="RequestResponse",
+        Payload=json.dumps({"body": json.dumps({"query": query})}),
+    )
+    raw = json.loads(resp["Payload"].read())
+    # runtime handler returns API Gateway-shaped dict: {statusCode, headers, body}
+    body = raw.get("body", "{}")
+    if isinstance(body, str):
+        body = json.loads(body)
+    if raw.get("statusCode", 500) >= 500:
+        raise RuntimeError(f"agent Lambda returned {raw.get('statusCode')}: {body}")
+    return body
 
 
 def judge_answer(client: Anthropic, case: Dict, response: Dict, rubric: str) -> Dict:
