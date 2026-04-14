@@ -3,7 +3,12 @@
 Spec Section 5.4. Acceptable at N<20K chunks. Ingest is Day-0 pre-work
 (scripts/ingest_edgar.py). Until ingest runs, fabops_edgar_index is empty
 and this tool returns {"hits": []}.
+
+Runtime constraint: the deployed Lambda zip does NOT bundle numpy (would
+blow the 50 MB ceiling). All vector math here is pure Python so the tool
+works identically in dev (venv with numpy) and on Lambda (no numpy).
 """
+import math
 import os
 import time
 from typing import List, Optional
@@ -19,8 +24,7 @@ EMBED_MODEL = "models/gemini-embedding-001"
 _CHUNK_CACHE: Optional[List[dict]] = None
 
 
-def _embed_query(query: str) -> "np.ndarray":
-    import numpy as np
+def _embed_query(query: str) -> List[float]:
     import google.generativeai as genai
     genai.configure(api_key=os.environ["GEMINI_API_KEY"])
     result = genai.embed_content(
@@ -28,7 +32,7 @@ def _embed_query(query: str) -> "np.ndarray":
         content=query,
         task_type="retrieval_query",
     )
-    return np.array(result["embedding"], dtype=np.float32)
+    return [float(x) for x in result["embedding"]]
 
 
 def _load_all_chunks() -> List[dict]:
@@ -43,13 +47,18 @@ def _load_all_chunks() -> List[dict]:
     return items
 
 
-def _cosine(a: "np.ndarray", b: "np.ndarray") -> float:
-    import numpy as np
-    na = np.linalg.norm(a)
-    nb = np.linalg.norm(b)
-    if na == 0 or nb == 0:
+def _cosine(a: List[float], b: List[float]) -> float:
+    """Pure-Python cosine similarity. O(n) over the shared length."""
+    dot = 0.0
+    na = 0.0
+    nb = 0.0
+    for x, y in zip(a, b):
+        dot += x * y
+        na += x * x
+        nb += y * y
+    if na == 0.0 or nb == 0.0:
         return 0.0
-    return float(np.dot(a, b) / (na * nb))
+    return dot / (math.sqrt(na) * math.sqrt(nb))
 
 
 def reset_cache() -> None:
@@ -72,13 +81,12 @@ def run(query: str, top_k: int = 5, date_from: Optional[str] = None) -> ToolResu
             latency_ms=(time.time() - t0) * 1000,
         )
 
-    import numpy as np
     qvec = _embed_query(query)
     hits = []
     for chunk in _CHUNK_CACHE:
         if date_from and chunk.get("filing_date", "") < date_from:
             continue
-        cvec = np.array([float(x) for x in chunk["embedding"]], dtype=np.float32)
+        cvec = [float(x) for x in chunk["embedding"]]
         score = _cosine(qvec, cvec)
         hits.append((score, chunk))
 
