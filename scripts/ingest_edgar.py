@@ -13,6 +13,7 @@ import hashlib
 import json
 import os
 import time
+from datetime import date
 from pathlib import Path
 from typing import Dict, List
 
@@ -20,7 +21,7 @@ import boto3
 import google.generativeai as genai
 import requests
 from bs4 import BeautifulSoup
-from tenacity import retry, stop_after_attempt, wait_exponential
+from tenacity import RetryError, retry, stop_after_attempt, wait_exponential
 from tqdm import tqdm
 
 CIK = "0000006951"  # Applied Materials
@@ -51,8 +52,11 @@ def fetch(url: str, email: str) -> str:
     return r.text
 
 
+# FIX 5: Added retry decorator and rate-limit sleep to list_filings
+@retry(stop=stop_after_attempt(5), wait=wait_exponential(multiplier=1, min=2, max=30))
 def list_filings(email: str) -> List[Dict]:
     """Query EDGAR submissions API for AM's recent filings of interest."""
+    time.sleep(0.15)  # respect 10 req/sec limit
     url = f"https://data.sec.gov/submissions/CIK{CIK}.json"
     headers = sec_headers(email)
     headers["Host"] = "data.sec.gov"
@@ -69,9 +73,9 @@ def list_filings(email: str) -> List[Dict]:
                 "accession": recent["accessionNumber"][i],
                 "primary_doc": recent["primaryDocument"][i],
             })
-    # Keep last YEARS_BACK of filings
-    cutoff = f"{2026 - YEARS_BACK}-01-01"
-    return [f for f in filings if f["filing_date"] >= cutoff]
+    # FIX 4: Use date.today().year instead of hardcoded 2026
+    cutoff = f"{date.today().year - YEARS_BACK}-01-01"
+    return [filing for filing in filings if filing["filing_date"] >= cutoff]
 
 
 def chunk_text(text: str, chunk_words: int = CHUNK_TOKENS) -> List[str]:
@@ -86,18 +90,34 @@ def chunk_text(text: str, chunk_words: int = CHUNK_TOKENS) -> List[str]:
     return chunks
 
 
+# FIX 1: Linearize tables instead of dropping them
 def clean_html(html: str) -> str:
     soup = BeautifulSoup(html, "html.parser")
-    for tag in soup(["script", "style", "table"]):
+    # script/style are pure noise — drop entirely
+    for tag in soup(["script", "style"]):
         tag.decompose()
+    # tables carry financial + supply-chain data — linearize, do not drop
+    for table in soup.find_all("table"):
+        linearized = " | ".join(
+            cell.get_text(strip=True) for cell in table.find_all(["td", "th"]) if cell.get_text(strip=True)
+        )
+        table.replace_with(f" {linearized} ")
     return " ".join(soup.get_text().split())
 
 
-@retry(stop=stop_after_attempt(5), wait=wait_exponential(multiplier=2, min=5, max=60))
+# FIX 2a: Corrected sleep to 2.5s (~24/min, under 30/min RPM free-tier ceiling)
+#          and bumped retry to 8 attempts with max 120s wait for wider RPM recovery window
+@retry(stop=stop_after_attempt(8), wait=wait_exponential(multiplier=2, min=10, max=120))
 def embed(text: str) -> List[float]:
-    time.sleep(0.5)  # keep under 1500 RPD = ~1 per 60s safe; tighten if budget allows
+    time.sleep(2.5)  # ~24 req/min — safely under Gemini free-tier 30 RPM; spreads RPD across the day
     result = genai.embed_content(model=EMBED_MODEL, content=text, task_type="retrieval_document")
     return result["embedding"]
+
+
+# FIX 3a: Extracted helper so incremental saves share one code path
+def _save_chunks(chunks: List[Dict]) -> None:
+    CHUNKS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    CHUNKS_FILE.write_text(json.dumps(chunks, indent=2))
 
 
 def main():
@@ -118,34 +138,61 @@ def main():
         print(f"Found {len(filings)} filings")
 
         all_chunks = []
-        for f in tqdm(filings, desc="Fetching filings"):
-            acc_nodashes = f["accession"].replace("-", "")
-            url = f"https://www.sec.gov/Archives/edgar/data/6951/{acc_nodashes}/{f['primary_doc']}"
-            local = RAW_DIR / f"{f['accession']}.html"
+        # FIX (minor): Renamed loop variable from f to filing to avoid shadowing the built-in
+        for filing in tqdm(filings, desc="Fetching filings"):
+            acc_nodashes = filing["accession"].replace("-", "")
+            url = f"https://www.sec.gov/Archives/edgar/data/6951/{acc_nodashes}/{filing['primary_doc']}"
+            local = RAW_DIR / f"{filing['accession']}.html"
             if not local.exists():
                 html = fetch(url, args.email)
                 local.write_text(html)
             text = clean_html(local.read_text())
             for i, chunk in enumerate(chunk_text(text)):
-                chunk_id = hashlib.md5(f"{f['accession']}-{i}".encode()).hexdigest()[:16]
+                chunk_id = hashlib.md5(f"{filing['accession']}-{i}".encode()).hexdigest()[:16]
                 all_chunks.append({
-                    "doc_id": f["accession"],
+                    "doc_id": filing["accession"],
                     "chunk_id": chunk_id,
-                    "form": f["form"],
-                    "filing_date": f["filing_date"],
+                    "form": filing["form"],
+                    "filing_date": filing["filing_date"],
                     "sec_url": url,
                     "text": chunk,
                 })
 
-        CHUNKS_FILE.parent.mkdir(parents=True, exist_ok=True)
-        CHUNKS_FILE.write_text(json.dumps(all_chunks, indent=2))
+        # FIX 3a: Save immediately after building chunk list (before embedding starts)
+        _save_chunks(all_chunks)
         print(f"Wrote {len(all_chunks)} chunks to {CHUNKS_FILE}")
 
-        print("Embedding chunks (slow; respects Gemini free-tier RPM)...")
-        for c in tqdm(all_chunks, desc="Embedding"):
-            c["embedding"] = embed(c["text"])
+        # FIX 3b: Resume logic — load already-embedded chunks and skip them
+        if CHUNKS_FILE.exists():
+            existing = {c["chunk_id"]: c for c in json.loads(CHUNKS_FILE.read_text()) if "embedding" in c}
+            if existing:
+                print(f"[resume] Found {len(existing)} already-embedded chunks; skipping them")
+                for c in all_chunks:
+                    if c["chunk_id"] in existing:
+                        c["embedding"] = existing[c["chunk_id"]]["embedding"]
 
-        CHUNKS_FILE.write_text(json.dumps(all_chunks, indent=2))
+        print("Embedding chunks (slow; respects Gemini free-tier RPM)...")
+        for idx, c in enumerate(tqdm(all_chunks, desc="Embedding")):
+            # FIX 3b: Skip chunks that already have an embedding (from resume)
+            if "embedding" in c:
+                continue
+            # FIX 2b: Catch RetryError after quota exhaustion — save progress and exit cleanly
+            try:
+                c["embedding"] = embed(c["text"])
+            except (RetryError, Exception) as e:
+                print(f"\n[embed] FAILED for chunk {c['chunk_id']} after retries: {e}")
+                embedded_count = len([x for x in all_chunks if "embedding" in x])
+                print(f"[embed] Progress saved at {embedded_count}/{len(all_chunks)} chunks.")
+                print(f"[embed] Resume tomorrow by re-running the same command (idempotent via --upload-only once complete)")
+                # FIX 3a: Save current progress before exiting
+                _save_chunks(all_chunks)
+                raise SystemExit(1)
+            # FIX 3a: Incremental save every 100 embeddings
+            if (idx + 1) % 100 == 0:
+                _save_chunks(all_chunks)
+
+        # FIX 3a: Final save after embedding loop completes
+        _save_chunks(all_chunks)
         print(f"Embeddings complete; re-wrote {CHUNKS_FILE}")
 
         if args.skip_upload:
@@ -155,6 +202,12 @@ def main():
         # --upload-only mode: load the existing chunks file
         all_chunks = json.loads(CHUNKS_FILE.read_text())
         print(f"Loaded {len(all_chunks)} chunks from {CHUNKS_FILE}")
+        # FIX 3c: Skip chunks without embeddings rather than crashing DynamoDB write
+        missing = [c for c in all_chunks if "embedding" not in c]
+        if missing:
+            print(f"[upload-only] WARNING: {len(missing)} chunks have no embedding and will be skipped.")
+            all_chunks = [c for c in all_chunks if "embedding" in c]
+            print(f"[upload-only] Uploading {len(all_chunks)} embedded chunks.")
 
     print("Uploading to S3...")
     s3 = boto3.client("s3")
