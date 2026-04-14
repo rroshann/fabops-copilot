@@ -1,0 +1,37 @@
+name: Eval CI Gate
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  eval-gold:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+      - name: Install deps
+        run: |
+          pip install -r requirements-runtime.txt
+          pip install -r requirements-dev.txt
+      - name: Run unit tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          pytest tests/ -v
+      - name: Run gold eval
+        env:
+          FABOPS_API_URL: ${{ secrets.FABOPS_API_URL }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          python scripts/run_judge.py --set gold
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results
+          path: evals/results/
