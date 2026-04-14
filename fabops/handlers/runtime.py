@@ -9,6 +9,7 @@ import traceback
 from fabops.agent.graph import get_graph
 from fabops.agent.state import AgentState
 from fabops.observability.audit import AuditWriter
+from fabops.observability.langfuse_shim import flush as langfuse_flush
 from fabops.observability.request_id import new_request_id
 
 
@@ -66,6 +67,11 @@ def handler(event, context):
             latency_ms=0.0, error=f"{type(e).__name__}: {e}"
         )
         return _response(500, {"error": str(e), "request_id": request_id})
+    finally:
+        # Force Langfuse to ship buffered trace events before Lambda terminates.
+        # On Lambda, the process ends before the SDK's background batch flush
+        # fires, so buffered events are lost unless we flush explicitly here.
+        langfuse_flush()
 
 
 def _response(status, body):

@@ -58,3 +58,18 @@ def link_request_id(request_id: str) -> None:
         )
     except Exception:
         pass
+
+
+def flush() -> None:
+    """Force Langfuse to ship any buffered trace events before Lambda exits.
+
+    Langfuse's default transport batches events in a background thread and
+    flushes on a timer — on Lambda the process terminates before the next
+    flush fires and the events are lost. Call this at the end of the handler
+    to guarantee delivery. No-op when langfuse is not active.
+    """
+    try:
+        from langfuse.decorators import langfuse_context
+        langfuse_context.flush()
+    except Exception:
+        pass
