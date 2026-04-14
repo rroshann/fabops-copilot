@@ -12,9 +12,23 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Dict, List
+
+
+def _extract_json_object(text: str) -> str:
+    """Pull a JSON object out of a model response that may be wrapped in
+    markdown fences or preceded by prose. Falls back to the original text.
+    """
+    m = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
+    if m:
+        return m.group(1)
+    m = re.search(r"(\{.*\})", text, re.DOTALL)
+    if m:
+        return m.group(1)
+    return text.strip()
 
 import boto3
 import requests
@@ -114,9 +128,8 @@ AGENT RESPONSE:
     )
     text = resp.content[0].text
     cost = resp.usage.input_tokens * PRICE_IN + resp.usage.output_tokens * PRICE_OUT
-    cleaned = text.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
     try:
-        verdict = json.loads(cleaned)
+        verdict = json.loads(_extract_json_object(text))
     except json.JSONDecodeError:
         verdict = {"pass": False, "issues": ["parse error"], "raw": text}
     return {"verdict": verdict, "cost_usd": cost}

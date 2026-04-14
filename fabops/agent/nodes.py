@@ -272,7 +272,14 @@ def prescribe_node(state: AgentState) -> AgentState:
                 supplier_id=supplier_id, delay_days=14,
                 part_id=state.part_id, fab_id=state.fab_id or "taiwan"
             )
-            state.prescription = result.data if result.ok else {"error": result.error}
+            # simulate_disruption.data holds sim metrics; wrap with an explicit
+            # action so finalize_node's .get("action") doesn't fall through.
+            sim = result.data if result.ok else {"error": result.error}
+            state.prescription = {
+                "action": "expedite",
+                "reason": f"supply-driven; disruption sim shows {sim.get('expected_delay_days', 'n/a')}d impact",
+                "simulation": sim,
+            }
             state.tool_call_count += 1
         else:
             state.prescription = {"action": "expedite", "reason": "supply-driven but no supplier context"}
