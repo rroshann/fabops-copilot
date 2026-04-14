@@ -51,6 +51,9 @@ data/carparts.csv
 logs/
 *.log
 
+# Generated eval artifacts (produced by scripts; not committed)
+evals/adversarial_set.json
+
 # IDE
 .vscode/
 .idea/
