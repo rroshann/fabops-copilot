@@ -19,10 +19,21 @@ from typing import Dict, List
 import boto3
 import requests
 from anthropic import Anthropic
+from botocore.config import Config as BotoConfig
 
 from fabops.config import AWS_REGION, CLAUDE_JUDGE_MODEL, ANTHROPIC_HARD_CAP_USD
 
 LAMBDA_FUNCTION_NAME = "fabops_agent_handler"
+# Lambda hard-timeout is 90s; boto3 read_timeout must be >= that.
+_BOTO_CONFIG = BotoConfig(read_timeout=180, connect_timeout=10, retries={"max_attempts": 2})
+_LAMBDA_CLIENT = None
+
+
+def _get_lambda_client():
+    global _LAMBDA_CLIENT
+    if _LAMBDA_CLIENT is None:
+        _LAMBDA_CLIENT = boto3.client("lambda", region_name=AWS_REGION, config=_BOTO_CONFIG)
+    return _LAMBDA_CLIENT
 
 RESULTS_DIR = Path("evals/results")
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -59,11 +70,11 @@ def run_agent(api_url: str, query: str) -> Dict:
     path through API Gateway instead (useful for smoke-testing routing).
     """
     if os.environ.get("FABOPS_USE_HTTP") == "1":
-        r = requests.post(api_url, json={"query": query}, timeout=120)
+        r = requests.post(api_url, json={"query": query}, timeout=180)
         r.raise_for_status()
         return r.json()
 
-    client = boto3.client("lambda", region_name=AWS_REGION)
+    client = _get_lambda_client()
     resp = client.invoke(
         FunctionName=LAMBDA_FUNCTION_NAME,
         InvocationType="RequestResponse",
@@ -127,8 +138,21 @@ def main():
     total_cost = 0.0
     results = []
     for case in cases:
-        print(f"[{case['id']}] running agent...")
-        response = run_agent(args.api_url, case["question"])
+        print(f"[{case['id']}] running agent...", flush=True)
+        try:
+            response = run_agent(args.api_url, case["question"])
+        except Exception as e:
+            print(f"  FAILED: {type(e).__name__}: {str(e)[:200]}", flush=True)
+            judgment = {
+                "verdict": {"pass": False, "issues": [f"agent error: {type(e).__name__}"]},
+                "cost_usd": 0.0,
+                "case_id": case["id"],
+                "response": {"error": str(e)[:500]},
+            }
+            results.append(judgment)
+            cache[f"{case['id']}:error"] = judgment
+            save_cache(cache)  # persist incrementally
+            continue
         h = trace_hash(response)
         cache_key = f"{case['id']}:{h}"
 
@@ -148,6 +172,8 @@ def main():
         judgment["response"] = response
         cache[cache_key] = judgment
         results.append(judgment)
+        save_cache(cache)  # persist incrementally so mid-loop crash doesn't lose work
+        print(f"  pass={judgment['verdict'].get('pass')} cost=${judgment['cost_usd']:.4f}", flush=True)
 
     save_cache(cache)
     RESULTS_DIR.joinpath(f"{args.set}_run.json").write_text(json.dumps(results, indent=2))
