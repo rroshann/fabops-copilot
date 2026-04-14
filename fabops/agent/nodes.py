@@ -14,7 +14,7 @@ import time
 from datetime import date
 from typing import Any, Dict
 
-from fabops.agent.llm import gemini_flash
+from fabops.agent.llm import gemini_flash, gemini_pro
 from fabops.agent.state import AgentState, ToolCallRecord
 from fabops.observability.audit import AuditWriter
 from fabops.tools.compute_reorder_policy import run as compute_policy
@@ -23,6 +23,7 @@ from fabops.tools.get_inventory import run as get_inventory
 from fabops.tools.get_macro_signal import run as get_macro
 from fabops.tools.get_supplier_leadtime import run as get_supplier
 from fabops.tools.search_disclosures import run as search_disclosures
+from fabops.tools.simulate_disruption import run as simulate_disruption
 
 
 # ---- AUDIT HELPER ---------------------------------------------------------
@@ -215,4 +216,150 @@ def ground_disclosures_node(state: AgentState) -> AgentState:
         (time.time() - t0) * 1000,
         ok=result.ok,
     )
+    return state
+
+
+# ---- DIAGNOSE ----
+
+DIAGNOSE_SYSTEM = """You are a semiconductor fab service-parts supply chain analyst.
+Given four pieces of evidence — policy staleness check, demand forecast/drift, supply signals, and public filings context — determine the PRIMARY driver of a potential stockout for the part.
+
+Output ONLY JSON with this exact shape:
+{
+  "primary_driver": "policy" | "demand" | "supply" | "none",
+  "confidence": 0.0-1.0,
+  "reasoning": "one-sentence explanation citing specific evidence"
+}
+"""
+
+
+def diagnose_node(state: AgentState) -> AgentState:
+    t0 = time.time()
+    prompt = f"""Evidence:
+- policy_check: {json.dumps(state.policy_check)}
+- demand_check: {json.dumps(state.demand_check)}
+- supply_check: {json.dumps(state.supply_check)}
+- disclosures: {json.dumps((state.disclosures_check or {}).get('hits', [])[:2])}
+
+Part: {state.part_id} at fab {state.fab_id}.
+What is the primary driver?"""
+    text, _ = gemini_pro(prompt, system=DIAGNOSE_SYSTEM)
+    state.llm_pro_calls += 1
+    state.llm_total_calls += 1
+    cleaned = text.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+    try:
+        state.diagnosis = json.loads(cleaned)
+    except json.JSONDecodeError:
+        state.diagnosis = {"primary_driver": "none", "confidence": 0.0, "reasoning": "parse error"}
+    _audit(state, "diagnose", {}, state.diagnosis, (time.time() - t0) * 1000)
+    return state
+
+
+# ---- PRESCRIBE ----
+
+def prescribe_node(state: AgentState) -> AgentState:
+    t0 = time.time()
+    driver = (state.diagnosis or {}).get("primary_driver", "none")
+
+    if driver == "supply" and state.part_id:
+        supplier_id = (state.supply_check or {}).get("supplier", {}).get("supplier_id")
+        if supplier_id:
+            result = simulate_disruption(
+                supplier_id=supplier_id, delay_days=14,
+                part_id=state.part_id, fab_id=state.fab_id or "taiwan"
+            )
+            state.prescription = result.data if result.ok else {"error": result.error}
+            state.tool_call_count += 1
+        else:
+            state.prescription = {"action": "expedite", "reason": "supply-driven but no supplier context"}
+    elif driver == "policy":
+        state.prescription = {
+            "action": "refresh_reorder_policy",
+            "reason": f"policy staleness {(state.policy_check or {}).get('staleness_days', 'unknown')} days",
+        }
+    elif driver == "demand":
+        state.prescription = {
+            "action": "place_reorder",
+            "reason": "demand drift exceeds safety stock buffer",
+        }
+    else:
+        state.prescription = {"action": "monitor", "reason": "no clear driver"}
+
+    _audit(state, "prescribe_action", {"driver": driver}, state.prescription,
+           (time.time() - t0) * 1000)
+    return state
+
+
+# ---- VERIFY ----
+
+VERIFY_SYSTEM = """You are an evaluation judge for a supply-chain copilot.
+Given the evidence, diagnosis, and prescription, score the agent's answer on:
+- correctness (does the diagnosis match the evidence?)
+- citation_faithfulness (are cited facts present in evidence?)
+- action_appropriateness (is the prescription reasonable given the driver?)
+
+Output ONLY JSON:
+{"correctness": 1-5, "citation_faithfulness": 1-5, "action_appropriateness": 1-5, "pass": true|false, "issues": ["..."]}
+
+Mark pass=true only if all three scores are >=4.
+"""
+
+
+def verify_node(state: AgentState) -> AgentState:
+    t0 = time.time()
+    state.verify_attempts += 1
+    prompt = f"""Evidence:
+- policy: {json.dumps(state.policy_check)}
+- demand: {json.dumps(state.demand_check)}
+- supply: {json.dumps(state.supply_check)}
+- disclosures: {json.dumps((state.disclosures_check or {}).get('hits', [])[:2])}
+
+Diagnosis: {json.dumps(state.diagnosis)}
+Prescription: {json.dumps(state.prescription)}
+"""
+    text, _ = gemini_pro(prompt, system=VERIFY_SYSTEM)
+    state.llm_pro_calls += 1
+    state.llm_total_calls += 1
+    cleaned = text.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+    try:
+        verdict = json.loads(cleaned)
+        state.verify_passed = bool(verdict.get("pass", False))
+    except json.JSONDecodeError:
+        verdict = {"pass": False, "issues": ["parse error"]}
+        state.verify_passed = False
+    _audit(state, "verify", {"attempt": state.verify_attempts}, verdict,
+           (time.time() - t0) * 1000)
+    return state
+
+
+# ---- FINALIZE ----
+
+def finalize_node(state: AgentState) -> AgentState:
+    t0 = time.time()
+    driver = (state.diagnosis or {}).get("primary_driver", "unknown")
+    conf = (state.diagnosis or {}).get("confidence", 0.0)
+    action = (state.prescription or {}).get("action", "unknown")
+    p90_date = (state.demand_check or {}).get("p90_stockout_date")
+
+    answer = f"""DIAGNOSIS: primary driver = {driver} (confidence {conf:.2f})
+P90 STOCKOUT DATE: {p90_date or 'not computed'}
+RECOMMENDED ACTION: {action}
+"""
+    state.final_answer = answer
+
+    cites = []
+    if state.demand_check and state.demand_check.get("model"):
+        cites.append({"source": "Hyndman carparts / Croston forecast",
+                      "url": "https://zenodo.org/records/3994911",
+                      "excerpt": f"{state.demand_check.get('model')} model, P90 = {p90_date}"})
+    if state.disclosures_check and state.disclosures_check.get("hits"):
+        for h in state.disclosures_check["hits"][:2]:
+            cites.append({"source": f"SEC {h['filing_type']} {h['filing_date']}",
+                          "url": h["sec_url"], "excerpt": h["excerpt"][:200]})
+    if state.policy_check and "staleness_days" in state.policy_check:
+        cites.append({"source": "reorder policy (classical OR)",
+                      "excerpt": f"staleness = {state.policy_check['staleness_days']} days"})
+    state.citations = cites
+
+    _audit(state, "finalize", {}, {"answer_length": len(answer)}, (time.time() - t0) * 1000)
     return state
