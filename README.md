@@ -6,7 +6,8 @@
 ![AWS](https://img.shields.io/badge/AWS-Lambda%20%7C%20DynamoDB%20%7C%20S3%20%7C%20API%20Gateway-orange)
 ![Tests](https://img.shields.io/badge/tests-41%2F41%20passing-brightgreen)
 
-**Live demo dashboard:** http://fabops-copilot-frontend.s3-website-us-east-1.amazonaws.com
+**Live demo dashboard (HTTPS, Amplify Hosting + GitHub CI/CD):** https://main.d23s2e6xnypmh0.amplifyapp.com
+**Live demo dashboard (HTTP, raw S3 static hosting — matches DS 5730 course tutorial):** http://fabops-copilot-frontend.s3-website-us-east-1.amazonaws.com
 **Live API endpoint:** `https://3ph4o9amg4.execute-api.us-east-1.amazonaws.com/getChatResponse` *(evals invoke Lambda directly — API Gateway's 30s integration timeout fires on cold-start cases; see REPORT.md §5 for the gold run methodology)*
 **Technical report:** [REPORT.md](REPORT.md)
 **Claude Desktop MCP demo clip:** coming soon — see [REPORT.md](REPORT.md) §8 for the verified MCP handshake
