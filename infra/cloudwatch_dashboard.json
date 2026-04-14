@@ -1,0 +1,80 @@
+{
+  "widgets": [
+    {
+      "type": "metric",
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["AWS/Lambda", "Duration", "FunctionName", "fabops_agent_handler", { "stat": "p50", "label": "p50" }],
+          ["AWS/Lambda", "Duration", "FunctionName", "fabops_agent_handler", { "stat": "p95", "label": "p95" }],
+          ["AWS/Lambda", "Duration", "FunctionName", "fabops_agent_handler", { "stat": "p99", "label": "p99" }]
+        ],
+        "period": 300,
+        "title": "Runtime Lambda Latency",
+        "region": "us-east-1",
+        "view": "timeSeries",
+        "stacked": false
+      }
+    },
+    {
+      "type": "metric",
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["AWS/Lambda", "Errors", "FunctionName", "fabops_agent_handler", { "stat": "Sum", "label": "Errors" }],
+          ["AWS/Lambda", "Throttles", "FunctionName", "fabops_agent_handler", { "stat": "Sum", "label": "Throttles" }]
+        ],
+        "period": 300,
+        "title": "Runtime Lambda Errors + Throttles",
+        "region": "us-east-1",
+        "view": "timeSeries"
+      }
+    },
+    {
+      "type": "metric",
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["AWS/Lambda", "Invocations", "FunctionName", "fabops_agent_handler", { "stat": "Sum" }]
+        ],
+        "period": 3600,
+        "title": "Runtime Lambda Invocations (hourly)",
+        "region": "us-east-1",
+        "view": "timeSeries"
+      }
+    },
+    {
+      "type": "metric",
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["AWS/Lambda", "Duration", "FunctionName", "nightly_forecast_bake", { "stat": "p50", "label": "p50" }],
+          ["AWS/Lambda", "Duration", "FunctionName", "nightly_forecast_bake", { "stat": "p95", "label": "p95" }]
+        ],
+        "period": 300,
+        "title": "Nightly Bake Lambda Latency",
+        "region": "us-east-1",
+        "view": "timeSeries",
+        "stacked": false
+      }
+    },
+    {
+      "type": "metric",
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          ["AWS/Lambda", "Errors", "FunctionName", "nightly_forecast_bake", { "stat": "Sum", "label": "Errors" }]
+        ],
+        "period": 300,
+        "title": "Nightly Bake Lambda Errors",
+        "region": "us-east-1",
+        "view": "timeSeries"
+      }
+    }
+  ]
+}
