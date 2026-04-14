@@ -4,6 +4,7 @@ Reads POST body with {"query": "..."}. Returns the agent's final answer
 plus the audit trail and citations.
 """
 import json
+import traceback
 
 from fabops.agent.graph import get_graph
 from fabops.agent.state import AgentState
@@ -58,9 +59,11 @@ def handler(event, context):
             "step_count": step_n,
         })
     except Exception as e:
+        tb = traceback.format_exc()
+        print(f"[runtime_error] {type(e).__name__}: {e}\n{tb}")
         audit.log_step(
             node="runtime_error", args={"query": query}, result={},
-            latency_ms=0.0, error=str(e)
+            latency_ms=0.0, error=f"{type(e).__name__}: {e}"
         )
         return _response(500, {"error": str(e), "request_id": request_id})
 

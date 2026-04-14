@@ -69,7 +69,7 @@ def run(
         used_cache = False
 
     if on_hand is not None:
-        from fabops.tools._croston_numpy import compute_p90_stockout_date as _compute_stockout
+        from fabops.tools._stockout import compute_p90_stockout_date as _compute_stockout
         stockout = _compute_stockout(
             data["p90"], on_hand, start_month_iso=date.today().isoformat()
         )
