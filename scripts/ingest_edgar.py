@@ -210,11 +210,11 @@ def main():
             print(f"[upload-only] Uploading {len(all_chunks)} embedded chunks.")
 
     print("Uploading to S3...")
-    s3 = boto3.client("s3")
+    s3 = boto3.client("s3", region_name="us-east-1")
     s3.put_object(Bucket=S3_BUCKET, Key=S3_KEY, Body=json.dumps(all_chunks).encode())
 
     print("Writing to DynamoDB fabops_edgar_index...")
-    ddb = boto3.resource("dynamodb").Table(DDB_TABLE)
+    ddb = boto3.resource("dynamodb", region_name="us-east-1").Table(DDB_TABLE)
     with ddb.batch_writer() as batch:
         for c in all_chunks:
             batch.put_item(Item={
