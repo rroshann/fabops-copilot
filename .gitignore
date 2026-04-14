@@ -1,0 +1,54 @@
+# Course materials (not ours to redistribute)
+reference/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Environments
+.venv/
+venv/
+env/
+.env
+.env.*
+!.env.example
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Build / packaging artifacts
+build/
+dist/
+*.zip
+
+# AWS / Lambda packaging
+lambda_build/
+layer_build/
+.aws-sam/
+samconfig.toml
+cdk.out/
+
+# Data (large; pull via scripts)
+data/raw/
+data/interim/
+data/processed/
+*.parquet
+*.feather
+
+# Logs
+logs/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
