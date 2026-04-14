@@ -6,11 +6,7 @@
     "fab_id": "taiwan",
     "ground_truth_driver": "policy",
     "ground_truth_action": "refresh_reorder_policy",
-    "expected_tool_sequence": [
-      "entry", "check_policy_staleness", "check_demand_drift",
-      "check_supply_drift", "ground_in_disclosures",
-      "diagnose", "prescribe_action", "verify", "finalize"
-    ],
+    "expected_tool_sequence": ["entry", "check_policy_staleness", "check_demand_drift", "check_supply_drift", "ground_in_disclosures", "diagnose", "prescribe_action", "verify", "finalize"],
     "notes": "Policy-driven: safety stock staleness > 365 days triggers refresh at this high-volume fab."
   },
   {
@@ -20,11 +16,7 @@
     "fab_id": "arizona",
     "ground_truth_driver": "policy",
     "ground_truth_action": "refresh_reorder_policy",
-    "expected_tool_sequence": [
-      "entry", "check_policy_staleness", "check_demand_drift",
-      "check_supply_drift", "ground_in_disclosures",
-      "diagnose", "prescribe_action", "verify", "finalize"
-    ],
+    "expected_tool_sequence": ["entry", "check_policy_staleness", "check_demand_drift", "check_supply_drift", "ground_in_disclosures", "diagnose", "prescribe_action", "verify", "finalize"],
     "notes": "Policy-driven: reorder point was calculated under outdated lead time assumptions and has not been refreshed."
   },
   {
@@ -34,389 +26,157 @@
     "fab_id": "singapore",
     "ground_truth_driver": "policy",
     "ground_truth_action": "refresh_reorder_policy",
-    "expected_tool_sequence": [
-      "entry", "check_policy_staleness", "check_demand_drift",
-      "check_supply_drift", "ground_in_disclosures",
-      "diagnose", "prescribe_action", "verify", "finalize"
-    ],
-    "notes": "Policy-driven: safety stock formula uses a stale demand variance estimate; current policy underestimates risk."
+    "expected_tool_sequence": ["entry", "check_policy_staleness", "check_demand_drift", "check_supply_drift", "ground_in_disclosures", "diagnose", "prescribe_action", "verify", "finalize"],
+    "notes": "Policy-driven: classical OR parameters are stale and no longer reflect the current demand regime."
   },
   {
     "id": "gold-004",
-    "question": "Explain the stockout risk for part 11046625 at the Austin TX fab.",
+    "question": "Explain the stockout risk for part 11046625 at the Dresden fab.",
     "part_id": "11046625",
-    "fab_id": "austin-tx",
+    "fab_id": "dresden-de",
     "ground_truth_driver": "policy",
     "ground_truth_action": "refresh_reorder_policy",
-    "expected_tool_sequence": [
-      "entry", "check_policy_staleness", "check_demand_drift",
-      "check_supply_drift", "ground_in_disclosures",
-      "diagnose", "prescribe_action", "verify", "finalize"
-    ],
-    "notes": "Policy-driven: reorder policy parameters are over 18 months old and were never recalibrated after a product mix change."
+    "expected_tool_sequence": ["entry", "check_policy_staleness", "check_demand_drift", "check_supply_drift", "ground_in_disclosures", "diagnose", "prescribe_action", "verify", "finalize"],
+    "notes": "Policy-driven: the in-place reorder point does not match the actual leadtime demand distribution."
   },
   {
     "id": "gold-005",
-    "question": "Should we update the replenishment policy for part 11100473 at the Dresden DE fab?",
+    "question": "Should we refresh the reorder policy for part 11100473 at the Kumamoto fab?",
     "part_id": "11100473",
-    "fab_id": "dresden-de",
+    "fab_id": "kumamoto-jp",
     "ground_truth_driver": "policy",
     "ground_truth_action": "refresh_reorder_policy",
-    "expected_tool_sequence": [
-      "entry", "check_policy_staleness", "check_demand_drift",
-      "check_supply_drift", "ground_in_disclosures",
-      "diagnose", "prescribe_action", "verify", "finalize"
-    ],
-    "notes": "Policy-driven: the current safety stock level is below the statistically correct minimum due to a stale policy calculation."
+    "expected_tool_sequence": ["entry", "check_policy_staleness", "check_demand_drift", "check_supply_drift", "ground_in_disclosures", "diagnose", "prescribe_action", "verify", "finalize"],
+    "notes": "Policy-driven: safety stock is set too low for the part's observed variability."
   },
   {
     "id": "gold-006",
-    "question": "What is the primary risk factor for part 11515493 at the Gloucester MA fab?",
+    "question": "What's the reorder policy status for part 11515493 at the Austin fab?",
     "part_id": "11515493",
-    "fab_id": "gloucester-ma",
+    "fab_id": "austin-tx",
     "ground_truth_driver": "policy",
     "ground_truth_action": "refresh_reorder_policy",
-    "expected_tool_sequence": [
-      "entry", "check_policy_staleness", "check_demand_drift",
-      "check_supply_drift", "ground_in_disclosures",
-      "diagnose", "prescribe_action", "verify", "finalize"
-    ],
-    "notes": "Policy-driven: the lead-time distribution parameters baked into the policy no longer match current supplier performance."
+    "expected_tool_sequence": ["entry", "check_policy_staleness", "check_demand_drift", "check_supply_drift", "ground_in_disclosures", "diagnose", "prescribe_action", "verify", "finalize"],
+    "notes": "Policy-driven: the last policy update predates a known shift in demand patterns."
   },
   {
     "id": "gold-007",
-    "question": "Forecast the stockout risk for part 11527537 at the Kalispell MT fab and identify its root cause.",
+    "question": "Why is part 11527537 at risk of stocking out at the Santa Clara fab?",
     "part_id": "11527537",
-    "fab_id": "kalispell-mt",
-    "ground_truth_driver": "policy",
-    "ground_truth_action": "refresh_reorder_policy",
-    "expected_tool_sequence": [
-      "entry", "check_policy_staleness", "check_demand_drift",
-      "check_supply_drift", "ground_in_disclosures",
-      "diagnose", "prescribe_action", "verify", "finalize"
-    ],
-    "notes": "Policy-driven: the reorder point has not been refreshed since initial system setup, causing systematic under-ordering."
+    "fab_id": "santa-clara-ca",
+    "ground_truth_driver": "demand",
+    "ground_truth_action": "place_reorder",
+    "expected_tool_sequence": ["entry", "check_policy_staleness", "check_demand_drift", "check_supply_drift", "ground_in_disclosures", "diagnose", "prescribe_action", "verify", "finalize"],
+    "notes": "Demand-driven: forecasted consumption has outpaced the safety buffer since the last reorder."
   },
   {
     "id": "gold-008",
-    "question": "Why does the inventory position for part 12570570 look thin at the Kumamoto JP fab?",
+    "question": "Forecast the stockout risk for part 12570570 at the Gloucester fab.",
     "part_id": "12570570",
-    "fab_id": "kumamoto-jp",
-    "ground_truth_driver": "policy",
-    "ground_truth_action": "refresh_reorder_policy",
-    "expected_tool_sequence": [
-      "entry", "check_policy_staleness", "check_demand_drift",
-      "check_supply_drift", "ground_in_disclosures",
-      "diagnose", "prescribe_action", "verify", "finalize"
-    ],
-    "notes": "Policy-driven: the EOQ used in the policy is miscalibrated because holding-cost inputs were never updated post-expansion."
+    "fab_id": "gloucester-ma",
+    "ground_truth_driver": "demand",
+    "ground_truth_action": "place_reorder",
+    "expected_tool_sequence": ["entry", "check_policy_staleness", "check_demand_drift", "check_supply_drift", "ground_in_disclosures", "diagnose", "prescribe_action", "verify", "finalize"],
+    "notes": "Demand-driven: Croston/SBA forecast shows a significant upward drift that the reorder policy has not yet absorbed."
   },
   {
     "id": "gold-009",
-    "question": "Is the safety stock for part 12766084 sufficient at the Santa Clara CA fab?",
+    "question": "Is part 12766084 going to stock out at the Kalispell fab this quarter?",
     "part_id": "12766084",
-    "fab_id": "santa-clara-ca",
-    "ground_truth_driver": "policy",
-    "ground_truth_action": "refresh_reorder_policy",
-    "expected_tool_sequence": [
-      "entry", "check_policy_staleness", "check_demand_drift",
-      "check_supply_drift", "ground_in_disclosures",
-      "diagnose", "prescribe_action", "verify", "finalize"
-    ],
-    "notes": "Policy-driven: safety stock is set to a fixed hard-coded quantity rather than a statistically computed buffer."
+    "fab_id": "kalispell-mt",
+    "ground_truth_driver": "demand",
+    "ground_truth_action": "place_reorder",
+    "expected_tool_sequence": ["entry", "check_policy_staleness", "check_demand_drift", "check_supply_drift", "ground_in_disclosures", "diagnose", "prescribe_action", "verify", "finalize"],
+    "notes": "Demand-driven: the P90 stockout date falls within the next 90 days given current on-hand inventory."
   },
   {
     "id": "gold-010",
-    "question": "What should we do about part 12766210 at the Taiwan fab — its on-hand levels have been unusually low for weeks?",
+    "question": "What's the demand forecast telling us about part 12766210 at the Singapore fab?",
     "part_id": "12766210",
-    "fab_id": "taiwan",
-    "ground_truth_driver": "policy",
-    "ground_truth_action": "refresh_reorder_policy",
-    "expected_tool_sequence": [
-      "entry", "check_policy_staleness", "check_demand_drift",
-      "check_supply_drift", "ground_in_disclosures",
-      "diagnose", "prescribe_action", "verify", "finalize"
-    ],
-    "notes": "Policy-driven: the reorder policy was computed before a significant ramp in fab utilization and now systematically under-stocks."
+    "fab_id": "singapore",
+    "ground_truth_driver": "demand",
+    "ground_truth_action": "place_reorder",
+    "expected_tool_sequence": ["entry", "check_policy_staleness", "check_demand_drift", "check_supply_drift", "ground_in_disclosures", "diagnose", "prescribe_action", "verify", "finalize"],
+    "notes": "Demand-driven: consumption rate has trended upward over the last four forecast windows."
   },
   {
     "id": "gold-011",
-    "question": "Why is part 14095053 at risk of stocking out at the Arizona fab?",
+    "question": "Should I place a reorder for part 14095053 at the Taiwan fab?",
     "part_id": "14095053",
-    "fab_id": "arizona",
+    "fab_id": "taiwan",
     "ground_truth_driver": "demand",
     "ground_truth_action": "place_reorder",
-    "expected_tool_sequence": [
-      "entry", "check_policy_staleness", "check_demand_drift",
-      "check_supply_drift", "ground_in_disclosures",
-      "diagnose", "prescribe_action", "verify", "finalize"
-    ],
-    "notes": "Demand-driven: Croston/SBA forecast shows a significant upward drift in demand rate not reflected in on-hand inventory."
+    "expected_tool_sequence": ["entry", "check_policy_staleness", "check_demand_drift", "check_supply_drift", "ground_in_disclosures", "diagnose", "prescribe_action", "verify", "finalize"],
+    "notes": "Demand-driven: cumulative P90 demand exceeds current on-hand within one lead time cycle."
   },
   {
     "id": "gold-012",
-    "question": "Should I reorder part 15314468 at the Singapore fab given current demand trends?",
+    "question": "Explain the demand outlook for part 15314468 at the Arizona fab.",
     "part_id": "15314468",
-    "fab_id": "singapore",
+    "fab_id": "arizona",
     "ground_truth_driver": "demand",
     "ground_truth_action": "place_reorder",
-    "expected_tool_sequence": [
-      "entry", "check_policy_staleness", "check_demand_drift",
-      "check_supply_drift", "ground_in_disclosures",
-      "diagnose", "prescribe_action", "verify", "finalize"
-    ],
-    "notes": "Demand-driven: recent wafer starts surge has increased consumption significantly above the historical baseline."
+    "expected_tool_sequence": ["entry", "check_policy_staleness", "check_demand_drift", "check_supply_drift", "ground_in_disclosures", "diagnose", "prescribe_action", "verify", "finalize"],
+    "notes": "Demand-driven: pull rate has accelerated faster than the smoothed Croston forecast anticipated."
   },
   {
     "id": "gold-013",
-    "question": "What's driving the inventory drawdown for part 15317213 at the Austin TX fab?",
+    "question": "Why is part 15317213 at risk of stocking out at the Dresden fab?",
     "part_id": "15317213",
-    "fab_id": "austin-tx",
-    "ground_truth_driver": "demand",
-    "ground_truth_action": "place_reorder",
-    "expected_tool_sequence": [
-      "entry", "check_policy_staleness", "check_demand_drift",
-      "check_supply_drift", "ground_in_disclosures",
-      "diagnose", "prescribe_action", "verify", "finalize"
-    ],
-    "notes": "Demand-driven: a new product qualification at this fab has increased demand for this part beyond historical levels."
+    "fab_id": "dresden-de",
+    "ground_truth_driver": "supply",
+    "ground_truth_action": "expedite",
+    "expected_tool_sequence": ["entry", "check_policy_staleness", "check_demand_drift", "check_supply_drift", "ground_in_disclosures", "diagnose", "prescribe_action", "verify", "finalize"],
+    "notes": "Supply-driven: supplier lead time has stretched beyond the nominal contract window."
   },
   {
     "id": "gold-014",
-    "question": "Explain the risk for part 15337110 at the Dresden DE fab — should we place an emergency reorder?",
+    "question": "What's happening with supplier delivery for part 15337110 at the Austin fab?",
     "part_id": "15337110",
-    "fab_id": "dresden-de",
-    "ground_truth_driver": "demand",
-    "ground_truth_action": "place_reorder",
-    "expected_tool_sequence": [
-      "entry", "check_policy_staleness", "check_demand_drift",
-      "check_supply_drift", "ground_in_disclosures",
-      "diagnose", "prescribe_action", "verify", "finalize"
-    ],
-    "notes": "Demand-driven: demand has spiked above the forecast upper bound, depleting stock faster than the current replenishment cycle."
-  },
-  {
-    "id": "gold-015",
-    "question": "Is part 15368899 being consumed faster than expected at the Gloucester MA fab?",
-    "part_id": "15368899",
-    "fab_id": "gloucester-ma",
-    "ground_truth_driver": "demand",
-    "ground_truth_action": "place_reorder",
-    "expected_tool_sequence": [
-      "entry", "check_policy_staleness", "check_demand_drift",
-      "check_supply_drift", "ground_in_disclosures",
-      "diagnose", "prescribe_action", "verify", "finalize"
-    ],
-    "notes": "Demand-driven: fab utilization increase has caused intermittent demand to shift to a more regular high-frequency pattern."
-  },
-  {
-    "id": "gold-016",
-    "question": "What is causing the low stock for part 15383129 at the Kalispell MT fab?",
-    "part_id": "15383129",
-    "fab_id": "kalispell-mt",
-    "ground_truth_driver": "demand",
-    "ground_truth_action": "place_reorder",
-    "expected_tool_sequence": [
-      "entry", "check_policy_staleness", "check_demand_drift",
-      "check_supply_drift", "ground_in_disclosures",
-      "diagnose", "prescribe_action", "verify", "finalize"
-    ],
-    "notes": "Demand-driven: an unplanned maintenance event increased consumption of this consumable part well above forecast."
-  },
-  {
-    "id": "gold-017",
-    "question": "Forecast the stockout horizon for part 15383266 at the Kumamoto JP fab and recommend next steps.",
-    "part_id": "15383266",
-    "fab_id": "kumamoto-jp",
-    "ground_truth_driver": "demand",
-    "ground_truth_action": "place_reorder",
-    "expected_tool_sequence": [
-      "entry", "check_policy_staleness", "check_demand_drift",
-      "check_supply_drift", "ground_in_disclosures",
-      "diagnose", "prescribe_action", "verify", "finalize"
-    ],
-    "notes": "Demand-driven: demand drift is statistically significant (z-score > 2) and on-hand stock will reach zero before next planned delivery."
-  },
-  {
-    "id": "gold-018",
-    "question": "Should we be concerned about part 16270641 at the Santa Clara CA fab given the latest demand signal?",
-    "part_id": "16270641",
-    "fab_id": "santa-clara-ca",
-    "ground_truth_driver": "demand",
-    "ground_truth_action": "place_reorder",
-    "expected_tool_sequence": [
-      "entry", "check_policy_staleness", "check_demand_drift",
-      "check_supply_drift", "ground_in_disclosures",
-      "diagnose", "prescribe_action", "verify", "finalize"
-    ],
-    "notes": "Demand-driven: a customer pull-in has compressed the consumption schedule, causing faster-than-expected depletion."
-  },
-  {
-    "id": "gold-019",
-    "question": "Why is the days-of-supply for part 16639532 at the Taiwan fab trending downward?",
-    "part_id": "16639532",
-    "fab_id": "taiwan",
-    "ground_truth_driver": "demand",
-    "ground_truth_action": "place_reorder",
-    "expected_tool_sequence": [
-      "entry", "check_policy_staleness", "check_demand_drift",
-      "check_supply_drift", "ground_in_disclosures",
-      "diagnose", "prescribe_action", "verify", "finalize"
-    ],
-    "notes": "Demand-driven: upward demand drift has outpaced the current replenishment cadence, causing persistent inventory erosion."
-  },
-  {
-    "id": "gold-020",
-    "question": "Is part 16641592 at risk at the Arizona fab, and what is the primary reason?",
-    "part_id": "16641592",
-    "fab_id": "arizona",
-    "ground_truth_driver": "demand",
-    "ground_truth_action": "place_reorder",
-    "expected_tool_sequence": [
-      "entry", "check_policy_staleness", "check_demand_drift",
-      "check_supply_drift", "ground_in_disclosures",
-      "diagnose", "prescribe_action", "verify", "finalize"
-    ],
-    "notes": "Demand-driven: elevated process yields have increased part consumption per wafer lot, raising effective demand above forecast."
-  },
-  {
-    "id": "gold-021",
-    "question": "Why is part 16772140 at risk of stocking out at the Singapore fab?",
-    "part_id": "16772140",
-    "fab_id": "singapore",
-    "ground_truth_driver": "supply",
-    "ground_truth_action": "expedite",
-    "expected_tool_sequence": [
-      "entry", "check_policy_staleness", "check_demand_drift",
-      "check_supply_drift", "ground_in_disclosures",
-      "diagnose", "prescribe_action", "verify", "finalize"
-    ],
-    "notes": "Supply-driven: an active supplier capacity constraint has caused inbound shipments to fall short of scheduled delivery quantities."
-  },
-  {
-    "id": "gold-022",
-    "question": "What's causing the supply shortfall for part 16833942 at the Austin TX fab?",
-    "part_id": "16833942",
     "fab_id": "austin-tx",
     "ground_truth_driver": "supply",
     "ground_truth_action": "expedite",
-    "expected_tool_sequence": [
-      "entry", "check_policy_staleness", "check_demand_drift",
-      "check_supply_drift", "ground_in_disclosures",
-      "diagnose", "prescribe_action", "verify", "finalize"
-    ],
-    "notes": "Supply-driven: a port disruption in the supplier region has delayed the in-transit replenishment order beyond expected arrival."
+    "expected_tool_sequence": ["entry", "check_policy_staleness", "check_demand_drift", "check_supply_drift", "ground_in_disclosures", "diagnose", "prescribe_action", "verify", "finalize"],
+    "notes": "Supply-driven: active supplier capacity constraint has slowed inbound shipments."
   },
   {
-    "id": "gold-023",
-    "question": "Should I expedite part 18034474 from the supplier to protect the Dresden DE fab?",
-    "part_id": "18034474",
-    "fab_id": "dresden-de",
-    "ground_truth_driver": "supply",
-    "ground_truth_action": "expedite",
-    "expected_tool_sequence": [
-      "entry", "check_policy_staleness", "check_demand_drift",
-      "check_supply_drift", "ground_in_disclosures",
-      "diagnose", "prescribe_action", "verify", "finalize"
-    ],
-    "notes": "Supply-driven: the supplier has issued a force-majeure notice causing lead time to double; on-hand stock will be exhausted before revised delivery."
-  },
-  {
-    "id": "gold-024",
-    "question": "Explain the inventory risk for part 21014118 at the Gloucester MA fab — is this a supplier problem?",
-    "part_id": "21014118",
-    "fab_id": "gloucester-ma",
-    "ground_truth_driver": "supply",
-    "ground_truth_action": "expedite",
-    "expected_tool_sequence": [
-      "entry", "check_policy_staleness", "check_demand_drift",
-      "check_supply_drift", "ground_in_disclosures",
-      "diagnose", "prescribe_action", "verify", "finalize"
-    ],
-    "notes": "Supply-driven: supplier yield loss has reduced available allocation, and the most recent partial shipment covered only 60% of the PO quantity."
-  },
-  {
-    "id": "gold-025",
-    "question": "Is part 21014329 at the Kalispell MT fab facing a supply disruption?",
-    "part_id": "21014329",
-    "fab_id": "kalispell-mt",
-    "ground_truth_driver": "supply",
-    "ground_truth_action": "expedite",
-    "expected_tool_sequence": [
-      "entry", "check_policy_staleness", "check_demand_drift",
-      "check_supply_drift", "ground_in_disclosures",
-      "diagnose", "prescribe_action", "verify", "finalize"
-    ],
-    "notes": "Supply-driven: a sole-source supplier is undergoing a factory audit, halting shipments and leaving this fab without a replenishment path."
-  },
-  {
-    "id": "gold-026",
-    "question": "What is driving the stockout risk for part 21017990 at the Kumamoto JP fab?",
-    "part_id": "21017990",
+    "id": "gold-015",
+    "question": "Is part 15368899 at the Kumamoto fab facing any supplier-side issues?",
+    "part_id": "15368899",
     "fab_id": "kumamoto-jp",
     "ground_truth_driver": "supply",
     "ground_truth_action": "expedite",
-    "expected_tool_sequence": [
-      "entry", "check_policy_staleness", "check_demand_drift",
-      "check_supply_drift", "ground_in_disclosures",
-      "diagnose", "prescribe_action", "verify", "finalize"
-    ],
-    "notes": "Supply-driven: geopolitical export restrictions have delayed customs clearance for incoming shipments by several weeks."
+    "expected_tool_sequence": ["entry", "check_policy_staleness", "check_demand_drift", "check_supply_drift", "ground_in_disclosures", "diagnose", "prescribe_action", "verify", "finalize"],
+    "notes": "Supply-driven: macro industrial-production signal is trending down while supplier lead time is extending."
   },
   {
-    "id": "gold-027",
-    "question": "Forecast the stockout for part 21018475 at the Santa Clara CA fab and identify whether it's supply- or demand-driven.",
-    "part_id": "21018475",
+    "id": "gold-016",
+    "question": "Forecast the stockout risk for part 15383129 at the Gloucester fab — is it a supplier problem?",
+    "part_id": "15383129",
+    "fab_id": "gloucester-ma",
+    "ground_truth_driver": "supply",
+    "ground_truth_action": "expedite",
+    "expected_tool_sequence": ["entry", "check_policy_staleness", "check_demand_drift", "check_supply_drift", "ground_in_disclosures", "diagnose", "prescribe_action", "verify", "finalize"],
+    "notes": "Supply-driven: open incident against the primary supplier is blocking scheduled deliveries."
+  },
+  {
+    "id": "gold-017",
+    "question": "Should I expedite shipments for part 15383266 at the Kalispell fab?",
+    "part_id": "15383266",
+    "fab_id": "kalispell-mt",
+    "ground_truth_driver": "supply",
+    "ground_truth_action": "expedite",
+    "expected_tool_sequence": ["entry", "check_policy_staleness", "check_demand_drift", "check_supply_drift", "ground_in_disclosures", "diagnose", "prescribe_action", "verify", "finalize"],
+    "notes": "Supply-driven: supplier on-time-delivery rate has fallen below the contractual threshold."
+  },
+  {
+    "id": "gold-018",
+    "question": "What's the supplier situation for part 16270641 at the Santa Clara fab?",
+    "part_id": "16270641",
     "fab_id": "santa-clara-ca",
     "ground_truth_driver": "supply",
     "ground_truth_action": "expedite",
-    "expected_tool_sequence": [
-      "entry", "check_policy_staleness", "check_demand_drift",
-      "check_supply_drift", "ground_in_disclosures",
-      "diagnose", "prescribe_action", "verify", "finalize"
-    ],
-    "notes": "Supply-driven: the primary supplier is ramping a new production line, causing intermittent short-ships on open POs."
-  },
-  {
-    "id": "gold-028",
-    "question": "Why has part 21019471 been consistently below safety stock at the Taiwan fab for the past 30 days?",
-    "part_id": "21019471",
-    "fab_id": "taiwan",
-    "ground_truth_driver": "supply",
-    "ground_truth_action": "expedite",
-    "expected_tool_sequence": [
-      "entry", "check_policy_staleness", "check_demand_drift",
-      "check_supply_drift", "ground_in_disclosures",
-      "diagnose", "prescribe_action", "verify", "finalize"
-    ],
-    "notes": "Supply-driven: a logistics carrier strike has delayed replenishment shipments beyond their promised delivery window."
-  },
-  {
-    "id": "gold-029",
-    "question": "Should I be worried about part 21022023 at the Arizona fab — the last two shipments arrived late?",
-    "part_id": "21022023",
-    "fab_id": "arizona",
-    "ground_truth_driver": "supply",
-    "ground_truth_action": "expedite",
-    "expected_tool_sequence": [
-      "entry", "check_policy_staleness", "check_demand_drift",
-      "check_supply_drift", "ground_in_disclosures",
-      "diagnose", "prescribe_action", "verify", "finalize"
-    ],
-    "notes": "Supply-driven: the supplier has a recurring late-delivery pattern confirmed by the last two PO receipts, indicating a structural lead time extension."
-  },
-  {
-    "id": "gold-030",
-    "question": "What's the root cause of the inventory risk for part 21023181 at the Singapore fab?",
-    "part_id": "21023181",
-    "fab_id": "singapore",
-    "ground_truth_driver": "supply",
-    "ground_truth_action": "expedite",
-    "expected_tool_sequence": [
-      "entry", "check_policy_staleness", "check_demand_drift",
-      "check_supply_drift", "ground_in_disclosures",
-      "diagnose", "prescribe_action", "verify", "finalize"
-    ],
-    "notes": "Supply-driven: raw material shortages upstream have caused the supplier to allocate production across customers, reducing this fab's share."
+    "expected_tool_sequence": ["entry", "check_policy_staleness", "check_demand_drift", "check_supply_drift", "ground_in_disclosures", "diagnose", "prescribe_action", "verify", "finalize"],
+    "notes": "Supply-driven: the FRED semiconductor industrial production series shows a downtrend that correlates with this part's supplier disruption."
   }
 ]
