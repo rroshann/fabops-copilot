@@ -16,9 +16,6 @@ pip install -r requirements-runtime.txt --target "$BUILD_DIR" --quiet
 # Copy our package
 cp -r fabops "$BUILD_DIR/fabops"
 
-# Strip macOS-only .so binaries (not usable on Lambda Linux ARM64 anyway)
-find "$BUILD_DIR" -name "*.so" | grep -i "darwin" | xargs rm -f 2>/dev/null || true
-
 # Zip it
 (cd "$BUILD_DIR" && zip -rq runtime.zip . -x "*.pyc" -x "__pycache__/*")
 
