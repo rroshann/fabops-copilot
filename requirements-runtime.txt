@@ -5,4 +5,4 @@ anthropic==0.34.2
 pydantic==2.8.2
 boto3==1.34.131
 python-ulid==3.0.0
-langfuse==2.50.0
+langfuse>=3.0.0,<4.0.0

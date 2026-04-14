@@ -9,7 +9,10 @@ import traceback
 from fabops.agent.graph import get_graph
 from fabops.agent.state import AgentState
 from fabops.observability.audit import AuditWriter
-from fabops.observability.langfuse_shim import flush as langfuse_flush
+from fabops.observability.langfuse_shim import (
+    flush as langfuse_flush,
+    get_callback_handler,
+)
 from fabops.observability.request_id import new_request_id
 
 
@@ -36,7 +39,20 @@ def handler(event, context):
     try:
         graph = get_graph()
         initial_state = AgentState(request_id=request_id, user_query=query)
-        final_state = graph.invoke(initial_state)
+        # Attach the Langfuse CallbackHandler when configured (v3 pattern).
+        # Without it, graph.invoke runs with no callbacks and Langfuse sees
+        # nothing. The handler auto-captures every LLM/tool span inside the
+        # LangGraph execution.
+        callbacks = []
+        langfuse_cb = get_callback_handler()
+        if langfuse_cb is not None:
+            callbacks.append(langfuse_cb)
+        langchain_config = {
+            "callbacks": callbacks,
+            "metadata": {"fabops_request_id": request_id},
+            "tags": [f"req:{request_id}"],
+        }
+        final_state = graph.invoke(initial_state, config=langchain_config)
         # LangGraph returns a dict in some versions; normalize
         if isinstance(final_state, dict):
             answer = final_state.get("final_answer", "")

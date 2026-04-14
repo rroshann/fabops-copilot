@@ -17,7 +17,6 @@ from typing import Any, Dict
 from fabops.agent.llm import gemini_flash, gemini_pro
 from fabops.agent.state import AgentState, ToolCallRecord
 from fabops.observability.audit import AuditWriter
-from fabops.observability.langfuse_shim import link_request_id, observe
 from fabops.tools.compute_reorder_policy import run as compute_policy
 from fabops.tools.forecast_demand import run as forecast_demand
 from fabops.tools.get_inventory import run as get_inventory
@@ -76,9 +75,7 @@ ENTRY_SYSTEM = """You are a JSON-only parser. Extract from the user query:
 Respond with ONLY a JSON object. No prose, no markdown fences."""
 
 
-@observe()
 def entry_node(state: AgentState) -> AgentState:
-    link_request_id(state.request_id)
     t0 = time.time()
     text, _ = gemini_flash(state.user_query, system=ENTRY_SYSTEM)
     state.llm_total_calls += 1
@@ -236,7 +233,6 @@ Output ONLY JSON with this exact shape:
 """
 
 
-@observe()
 def diagnose_node(state: AgentState) -> AgentState:
     t0 = time.time()
     prompt = f"""Evidence:
@@ -316,7 +312,6 @@ Mark pass=true only if all three scores are >=4.
 """
 
 
-@observe()
 def verify_node(state: AgentState) -> AgentState:
     t0 = time.time()
     state.verify_attempts += 1
@@ -346,7 +341,6 @@ Prescription: {json.dumps(state.prescription)}
 
 # ---- FINALIZE ----
 
-@observe()
 def finalize_node(state: AgentState) -> AgentState:
     t0 = time.time()
     driver = (state.diagnosis or {}).get("primary_driver", "unknown")
