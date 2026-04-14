@@ -244,7 +244,7 @@ All seven tools are exposed as a single **MCP server** running in-process inside
 
 ### 6.3 Framing in the technical report (rehearsed paragraph)
 
-> *"Demand data is the Hyndman `carparts` benchmark (Zenodo DOI 10.5281/zenodo.3994911, 2,674 parts × 51 months), the canonical public intermittent-demand dataset used in academic forecasting literature (Syntetos, Boylan, Croston). We use it as a **methodological proxy**, not a representative dataset — real semi fab service parts have heavier tails, stronger install-base coupling, and tool-generation obsolescence cliffs that `carparts` does not capture. Parts are classified on the Syntetos-Boylan-Croston ADI/CV² quadrant; we forecast only those falling in the intermittent or lumpy quadrants, the domain where Croston/SBA/TSB are the literature-recommended methods. Industry macro context is pulled live from US Census M3 (NAICS 334413) and FRED (`IPG3344S`, `PCU33443344`). Qualitative supply-chain signals are pulled from Applied Materials' SEC EDGAR filings (CIK 0000006951). Inventory positions, supplier lead-times, and service-incident notes — which no semiconductor OEM discloses at the SKU level — are generated as a thin synthetic overlay with distributional parameters fit to published industry aggregates, clearly labeled as synthetic in the UI."*
+> *"Demand data is the Hyndman `carparts` benchmark (Zenodo DOI 10.5281/zenodo.3994911, 2,674 parts × 51 months), the canonical public intermittent-demand dataset used in academic forecasting literature (Syntetos, Boylan, Croston). We use it as a **methodological proxy**, not a representative dataset — real semi fab service parts have heavier tails, stronger install-base coupling, and tool-generation obsolescence cliffs that `carparts` does not capture. Parts are classified on the Syntetos-Boylan-Croston ADI/CV² quadrant; we forecast only those falling in the intermittent or lumpy quadrants, the domain where Croston/SBA/TSB are the literature-recommended methods. Industry macro context is pulled live from US Census M3 (NAICS 334413) and FRED (`IPG3344S`, `PCU33443344`). Qualitative supply-chain signals are pulled from Applied Materials' SEC EDGAR filings (CIK 0000006951). Inventory positions, supplier lead-times, and service-incident notes — which no semiconductor OEM discloses at the SKU level — are generated as a thin synthetic overlay with distributional parameters fit to published industry aggregates, clearly labeled as synthetic in the UI. Evaluation uses a cross-family LLM-as-judge (Claude Haiku 4.5 judging a Gemini-based agent) to avoid the correlated bias that same-family judging introduces."*
 
 ---
 
@@ -333,9 +333,10 @@ We satisfy this with four concrete artifacts:
 
 ### 10.2 Langfuse (agent tracing) — non-negotiable
 
-- Langfuse is non-negotiable; deployment topology (self-hosted vs. cloud free tier) is deferred to the open-questions section for the user to pick
+- **Langfuse Cloud free tier** (decided; no infra overhead; traces sit on langfuse.com and are linked to eval runs)
 - One decorator per LangGraph node automatically captures: trace, span, tool call, token count, cost, latency
 - Every agent run is linked to its eval result — the closed loop the red-team flagged as the 2026 signal
+- Free tier monthly event cap (~50K events) is expected to be sufficient; if a batch eval run would blow the cap we throttle evals rather than pay for Langfuse
 
 ### 10.3 MLflow (forecast model versioning)
 
@@ -395,10 +396,13 @@ Secondary, but present. Panels:
 - Reviewed by author for correctness labels
 - Used for trajectory-level scoring and confusion matrix analysis
 
-### 12.3 Judge
+### 12.3 Judge — cross-family LLM-as-judge (load-bearing methodology)
 
-- Gemini Pro as judge, rubric-based (1–5 scale on: correctness, citation faithfulness, action appropriateness)
-- Rubric committed to repo; each judge run saves full reasoning for audit
+- **Primary judge: Claude Haiku 4.5** via the Anthropic API, funded from student credits. Rubric-based (1–5 scale on: correctness, citation faithfulness, action appropriateness).
+- **Fallback judge: Gemini Pro**, activated if the Anthropic budget is exhausted (see Section 14 cost controls).
+- **Why cross-family:** same-family LLM-as-judge (Gemini judging Gemini) produces correlated bias and is methodologically weak. A cross-family judge (Claude judging Gemini) is the current academic best practice for agent evaluation in 2026 and reads materially stronger in the technical report.
+- **Rubric committed to repo;** each judge run saves full reasoning for audit.
+- **Cost discipline:** judge responses are cached by `(question_id, agent_trace_hash)` so identical traces are not re-judged across dev iterations. The 200-question synthetic adversarial set is run only 2–3 times (final-week regressions), not every dev iteration.
 
 ### 12.4 Trajectory scoring
 
@@ -473,11 +477,42 @@ Kept minimal — single-page HTML + vanilla JS + a small CSS framework. No React
 |---|---|---|---|
 | `statsforecast` arm64 cold-start blows p95 | HIGH | HIGH | Nightly pre-compute + provisioned concurrency + NumPy Croston fallback (day 1 decision) |
 | MCP client/server integration has rough edges in Python 3.9 arm64 | MEDIUM | MEDIUM | Build MCP layer day 3–4 behind a feature flag; fall back to direct LangGraph tool binding if blocked |
-| Langfuse self-host complexity eats a day | MEDIUM | LOW | Use Langfuse cloud free tier if self-host slips; cloud has same API |
-| Gemini free tier rate limits during eval runs | MEDIUM | MEDIUM | Batch eval runs, cache judge responses, spread over multiple days |
+| Langfuse cloud free tier event cap hit during batch evals | LOW | LOW | Throttle batch eval runs; cache judge responses; if cap hit late, disable tracing on synthetic-set re-runs only |
+| Gemini free tier rate limits during eval runs | MEDIUM | MEDIUM | Batch eval runs, cache judge responses, spread over multiple days; OpenAI GPT-4o-mini overflow via $5 credit |
 | DSPy compilation on 30 examples produces worse prompt | LOW | LOW | Report both versions in the tech report; it's a signal either way |
 | Scope creep from the expanded plan | MEDIUM | HIGH | Lock this spec; every additional feature request triggers explicit scope negotiation |
 | Demo-day Lambda quota / billing surprise | LOW | MEDIUM | Monitor CloudWatch cost daily; hard-cap Gemini usage in runtime |
+| Anthropic judge spend exceeds $10 credit | MEDIUM | MEDIUM | See Section 14.1 Budget and Cost Controls below |
+
+### 14.1 Budget and cost controls
+
+**Available credits (hard limits):**
+
+- **Google Gemini:** free tier (no credit pool; rate limits are the constraint)
+- **Anthropic:** $10 credit
+- **OpenAI:** $5 credit
+
+**Spending plan:**
+
+- **Gemini (agent runtime, embeddings, DSPy compile, fallback judge):** target **$0** — all on free tier
+- **Anthropic (cross-family Claude Haiku 4.5 judge + synthetic adversarial eval generation):** target **~$8**, hard cap **$9**
+- **OpenAI (GPT-4o-mini overflow insurance if Gemini free tier rate-limits block a DSPy compile or batch eval):** target **~$2**, hard cap **$4**
+- **Total projected burn:** ~$10–$12 of the $15 combined credit pool. ~$3–$5 safety margin.
+
+**Hard-switch automation:**
+
+1. Every judge call logs estimated Anthropic spend into `fabops_audit`.
+2. A running total is computed at the start of each eval batch.
+3. **At $9.00 cumulative Anthropic spend, the judge auto-switches to Gemini Pro** for the remainder of the project. A Slack-style console warning is emitted. This switch is one line of code behind a feature flag.
+4. Same pattern for OpenAI overflow: hard-switch at $4.00.
+
+**Cost-saving defenses:**
+
+- **Judge response caching** by `(question_id, agent_trace_hash)` — if an agent's trace didn't change, we don't re-judge. Expected savings: ~60% of judge spend across dev iterations.
+- **Tiered eval cadence:** 30-question gold set runs on every PR (cheap); 200-question synthetic adversarial set runs only on final-week regressions (expensive), 2–3 times total.
+- **Batched judge calls** (one Anthropic API request per batch of 10 questions, not one per question) to amortize HTTP overhead.
+
+**Non-goal:** we will not pay out-of-pocket. If all three budgets deplete, the project falls back to the Gemini-only path, still functional, with the cross-family methodology explicitly noted as a limitation in the report.
 
 ---
 
@@ -511,11 +546,15 @@ To stop future scope creep:
 
 ---
 
-## 17. Open questions for user review
+## 17. Resolved decisions (locked 2026-04-13)
 
-Before moving to the implementation plan, confirm or adjust:
+All prior open questions have been resolved with the user and are locked into this spec:
 
-1. Are you OK with me running the MCP layer **in-process inside Lambda** (vs. standalone stdio MCP server)? In-process is simpler and still counts as MCP — it's a deployment topology choice, not a protocol choice.
-2. Langfuse **cloud free tier** vs. **self-host**? Cloud is faster to stand up but puts traces off your machine; self-host is pure but eats 0.5–1 day. I recommend **cloud for speed**, self-host as a stretch goal.
-3. Is DSPy a must-have or nice-to-have? I marked it must-have but if scope gets tight it's the first thing I'd defer.
-4. Are you OK with vanilla HTML/JS for the v1 dashboard (no React)? Matches the tutorial stack and keeps the S3 deploy loop simple.
+1. **MCP topology:** in-process inside Lambda, with a separate stdio entry point exported for optional Claude Desktop / Cursor reuse. Simpler deploy, still MCP-compliant.
+2. **Langfuse deployment:** Langfuse Cloud free tier. Zero infra overhead, traces sit on langfuse.com linked to eval runs.
+3. **DSPy planner compilation:** must-have, kept in scope. It is the primary "2026 signal" prompt-as-artifact upgrade; compiles against the 30-question gold set in minutes. Only deferred if cold-start bugs consume days 1–3.
+4. **Frontend framework:** vanilla HTML / JS / CSS. Matches the course tutorial AWS pattern, simplest S3 deploy loop, no build-step complexity.
+5. **LLM-as-judge model:** cross-family — Claude Haiku 4.5 (Anthropic API, funded from student credits) judges the Gemini-based agent. Gemini Pro is the budget-exhaustion fallback. Full cost discipline captured in Section 14.1.
+6. **Primary agent LLM:** Google Gemini 2.0 Flash for routing and planner, Gemini 2.0 Pro for diagnose and verify. All on free tier, zero runtime cost.
+
+Spec is now considered design-locked. Any further change requires explicit user-driven scope negotiation.
