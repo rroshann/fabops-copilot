@@ -16,6 +16,7 @@ __pycache__/
 
 # Environments
 .venv/
+.venv-ingest/
 venv/
 env/
 .env
@@ -41,6 +42,7 @@ cdk.out/
 data/raw/
 data/interim/
 data/processed/
+data/edgar/
 *.parquet
 *.feather
 
