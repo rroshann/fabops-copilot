@@ -108,10 +108,50 @@ def handler(event, context):
             "last_updated": run_id,
         })
 
+    # --- MLflow tracking (computed before batch_write so in-memory floats are clean) ---
+    import mlflow
+    import numpy as np
+
+    smapes = []
+    for item in forecast_items:
+        part_hist = df_sub[df_sub["part_id"] == item["part_id"]]["demand"].astype(float).tolist()[-12:]
+        fc = [float(x) for x in item["forecast"]]
+        if len(part_hist) == len(fc):
+            num = sum(abs(h - f) for h, f in zip(part_hist, fc))
+            den = sum(abs(h) + abs(f) for h, f in zip(part_hist, fc)) / 2 or 1
+            smapes.append(num / den)
+
+    # Lambda /var/task is read-only; redirect MLflow's default artifact
+    # root to /tmp before any store is initialised (the constant is used
+    # at import time by _get_sqlalchemy_store when artifact_uri=None).
+    import mlflow.store.tracking as _mst
+    import mlflow.tracking._tracking_service.utils as _mtu
+    _mst.DEFAULT_LOCAL_FILE_AND_ARTIFACT_PATH = "/tmp/mlruns"
+    _mtu.DEFAULT_LOCAL_FILE_AND_ARTIFACT_PATH = "/tmp/mlruns"
+
+    mlflow.set_tracking_uri("sqlite:////tmp/mlflow.db")
+    mlflow.set_experiment("fabops-nightly-forecast")
+    with mlflow.start_run(run_name=run_id):
+        mlflow.log_param("model", "croston_sba")
+        mlflow.log_param("n_parts", len(forecast_items))
+        mlflow.log_param("horizon_months", 12)
+        if smapes:
+            mlflow.log_metric("smape_mean", float(np.mean(smapes)))
+            mlflow.log_metric("smape_p50", float(np.median(smapes)))
+            mlflow.log_metric("smape_p90", float(np.percentile(smapes, 90)))
+
     print(f"[nightly_bake] writing {len(forecast_items)} forecasts to {TABLE_FORECASTS}")
     batch_write(TABLE_FORECASTS, forecast_items)
     print(f"[nightly_bake] writing {len(policy_items)} policies to {TABLE_POLICIES}")
     batch_write(TABLE_POLICIES, policy_items)
+
+    # Upload MLflow tracking DB to S3 (non-fatal if bucket not yet available)
+    try:
+        import boto3
+        boto3.client("s3").upload_file("/tmp/mlflow.db", "fabops-copilot-artifacts", "mlflow.db")
+        print("[nightly_bake] mlflow.db uploaded to s3://fabops-copilot-artifacts/mlflow.db")
+    except Exception as e:
+        print(f"[nightly_bake] mlflow S3 upload failed: {e}", flush=True)
 
     print(f"[nightly_bake] run_id={run_id} complete")
     return {
