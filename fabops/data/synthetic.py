@@ -65,6 +65,7 @@ def generate_suppliers(n_suppliers: int = 20, seed: int = 42) -> List[Dict]:
         last_shipment = date.today() - timedelta(days=rng.randint(1, 14))
         out.append({
             "supplier_id": f"SUP-{i:03d}",
+            "observed_date": last_shipment.isoformat(),
             "tier": tier,
             "mean_leadtime_days": round(max(5.0, mean), 1),
             "std_leadtime_days": round(max(0.5, std), 1),

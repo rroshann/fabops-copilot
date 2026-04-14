@@ -25,3 +25,4 @@ def test_generate_suppliers_realistic_leadtimes():
     for s in suppliers:
         assert 5 <= s["mean_leadtime_days"] <= 120
         assert s["std_leadtime_days"] > 0
+        assert "observed_date" in s, "observed_date sort key must be present for DynamoDB write"
