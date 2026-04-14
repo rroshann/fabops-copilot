@@ -22,8 +22,8 @@ S3_ARTIFACTS: Final[str] = "fabops-copilot-artifacts"
 S3_EVALS: Final[str] = "fabops-copilot-evals"
 
 # LLM config
-GEMINI_FLASH_MODEL: Final[str] = "gemini-2.0-flash-exp"
-GEMINI_PRO_MODEL: Final[str] = "gemini-2.0-pro-exp"
+GEMINI_FLASH_MODEL: Final[str] = "gemini-2.5-flash"
+GEMINI_PRO_MODEL: Final[str] = "gemini-2.5-pro"
 CLAUDE_JUDGE_MODEL: Final[str] = "claude-haiku-4-5-20251001"
 
 # Agent caps (from spec Section 4.2)
