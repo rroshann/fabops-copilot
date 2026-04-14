@@ -13,7 +13,7 @@ import boto3
 from fabops.config import TABLE_EDGAR, AWS_REGION
 from fabops.tools.base import Citation, ToolResult
 
-EMBED_MODEL = "models/text-embedding-004"
+EMBED_MODEL = "models/gemini-embedding-001"
 
 # Module-level cache to survive across warm Lambda invocations
 _CHUNK_CACHE: Optional[List[dict]] = None
