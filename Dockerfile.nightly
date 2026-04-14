@@ -8,5 +8,6 @@ COPY requirements-nightly.txt ${LAMBDA_TASK_ROOT}/
 RUN pip install --no-cache-dir -r requirements-nightly.txt
 
 COPY fabops/ ${LAMBDA_TASK_ROOT}/fabops/
+COPY data/carparts.csv ${LAMBDA_TASK_ROOT}/data/carparts.csv
 
 CMD ["fabops.handlers.nightly_bake.handler"]

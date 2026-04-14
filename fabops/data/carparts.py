@@ -1,11 +1,18 @@
 """Hyndman carparts loader + Syntetos-Boylan-Croston ADI/CV² classification."""
+import os
 from pathlib import Path
 from typing import Literal
 
 import numpy as np
 import pandas as pd
 
-DATA_PATH = Path(__file__).resolve().parents[2] / "data" / "carparts.csv"
+# Inside the Lambda container image, /var/task is the working root and
+# carparts.csv is copied to /var/task/data/. Locally, fall back to
+# <repo_root>/data/carparts.csv (two levels up from this file).
+_TASK_ROOT = Path(
+    os.environ.get("LAMBDA_TASK_ROOT", str(Path(__file__).resolve().parents[2]))
+)
+DATA_PATH = _TASK_ROOT / "data" / "carparts.csv"
 
 
 def load_carparts() -> pd.DataFrame:
