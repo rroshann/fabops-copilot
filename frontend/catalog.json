@@ -1,0 +1,141 @@
+{
+  "generated_from": "evals/gold_set.json",
+  "total_parts": 18,
+  "groups": [
+    {
+      "driver": "policy",
+      "label": "POLICY DRIFT",
+      "description": "Policy was computed against old demand. The number is stale, not wrong.",
+      "signal": "policy age > 365 days (threshold 90)",
+      "count": 6,
+      "parts": [
+        {
+          "part_id": "10279876",
+          "fab_id": "taiwan",
+          "fab_label": "Taiwan",
+          "question": "Why is part 10279876 at risk of stocking out at the Taiwan fab?"
+        },
+        {
+          "part_id": "10501478",
+          "fab_id": "arizona",
+          "fab_label": "Arizona",
+          "question": "What's driving the inventory situation for part 10501478 at the Arizona fab?"
+        },
+        {
+          "part_id": "10501552",
+          "fab_id": "singapore",
+          "fab_label": "Singapore",
+          "question": "Is part 10501552 going to stock out at the Singapore fab?"
+        },
+        {
+          "part_id": "11046625",
+          "fab_id": "dresden-de",
+          "fab_label": "Dresden",
+          "question": "Explain the stockout risk for part 11046625 at the Dresden fab."
+        },
+        {
+          "part_id": "11100473",
+          "fab_id": "kumamoto-jp",
+          "fab_label": "Kumamoto",
+          "question": "Should we take action on part 11100473 at the Kumamoto fab?"
+        },
+        {
+          "part_id": "11515493",
+          "fab_id": "austin-tx",
+          "fab_label": "Austin",
+          "question": "What's the status of part 11515493 at the Austin fab?"
+        }
+      ]
+    },
+    {
+      "driver": "supply",
+      "label": "SUPPLY RISK",
+      "description": "A supplier is degrading. Lead-time slipping, on-time delivery dropping.",
+      "signal": "supplier trend_30d = degrading",
+      "count": 9,
+      "parts": [
+        {
+          "part_id": "11527537",
+          "fab_id": "santa-clara-ca",
+          "fab_label": "Santa Clara",
+          "question": "Forecast the stockout risk for part 11527537 at the Santa Clara fab."
+        },
+        {
+          "part_id": "12570570",
+          "fab_id": "gloucester-ma",
+          "fab_label": "Gloucester",
+          "question": "Is part 12570570 correctly managed at the Gloucester fab?"
+        },
+        {
+          "part_id": "12766084",
+          "fab_id": "kalispell-mt",
+          "fab_label": "Kalispell",
+          "question": "What's the risk profile for part 12766084 at the Kalispell fab?"
+        },
+        {
+          "part_id": "12766210",
+          "fab_id": "singapore",
+          "fab_label": "Singapore",
+          "question": "Should I expect a shortage of part 12766210 at the Singapore fab?"
+        },
+        {
+          "part_id": "14095053",
+          "fab_id": "taiwan",
+          "fab_label": "Taiwan",
+          "question": "What's happening with part 14095053 at the Taiwan fab?"
+        },
+        {
+          "part_id": "15314468",
+          "fab_id": "arizona",
+          "fab_label": "Arizona",
+          "question": "Why might part 15314468 stock out at the Arizona fab?"
+        },
+        {
+          "part_id": "15368899",
+          "fab_id": "kumamoto-jp",
+          "fab_label": "Kumamoto",
+          "question": "What does the data say about part 15368899 at the Kumamoto fab?"
+        },
+        {
+          "part_id": "15383266",
+          "fab_id": "kalispell-mt",
+          "fab_label": "Kalispell",
+          "question": "Review the risk for part 15383266 at the Kalispell fab."
+        },
+        {
+          "part_id": "16270641",
+          "fab_id": "santa-clara-ca",
+          "fab_label": "Santa Clara",
+          "question": "What should we do about part 16270641 at the Santa Clara fab?"
+        }
+      ]
+    },
+    {
+      "driver": "demand",
+      "label": "DEMAND SHIFT",
+      "description": "Real demand stepped up and depleted the on-hand buffer.",
+      "signal": "on_hand = 0, buffer depleted",
+      "count": 3,
+      "parts": [
+        {
+          "part_id": "15317213",
+          "fab_id": "dresden-de",
+          "fab_label": "Dresden",
+          "question": "Diagnose the stockout risk for part 15317213 at the Dresden fab."
+        },
+        {
+          "part_id": "15337110",
+          "fab_id": "austin-tx",
+          "fab_label": "Austin",
+          "question": "Assess the supply risk for part 15337110 at the Austin fab."
+        },
+        {
+          "part_id": "15383129",
+          "fab_id": "gloucester-ma",
+          "fab_label": "Gloucester",
+          "question": "Should we reorder part 15383129 at the Gloucester fab?"
+        }
+      ]
+    }
+  ]
+}

@@ -665,6 +665,85 @@ function closeModal() {
   $('modal-backdrop').classList.remove('open');
 }
 
+// ---------- Browse parts modal ----------
+
+let catalogData = null;
+let catalogFetchPromise = null;
+
+function loadCatalog() {
+  if (catalogData) return Promise.resolve(catalogData);
+  if (catalogFetchPromise) return catalogFetchPromise;
+  catalogFetchPromise = fetch('catalog.json', { cache: 'no-cache' })
+    .then(function (r) {
+      if (!r.ok) throw new Error('catalog.json HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function (data) {
+      catalogData = data;
+      return data;
+    })
+    .catch(function (err) {
+      catalogFetchPromise = null;
+      console.error('catalog load failed', err);
+      return null;
+    });
+  return catalogFetchPromise;
+}
+
+function renderCatalog(data) {
+  const body = $('browse-body');
+  if (!data || !data.groups) {
+    body.innerHTML =
+      '<div class="modal-section"><p class="modal-paragraph">Catalog unavailable. Try reloading the page.</p></div>';
+    return;
+  }
+  let html = '';
+  for (let i = 0; i < data.groups.length; i++) {
+    const g = data.groups[i];
+    html +=
+      '<div class="browse-group">' +
+        '<div class="browse-group-head">' +
+          '<span class="driver-chip ' + escapeHtml(g.driver) + '">' + escapeHtml(g.label) + '</span>' +
+          '<span class="browse-group-count">' + g.count + ' PART' + (g.count === 1 ? '' : 'S') + '</span>' +
+        '</div>' +
+        '<div class="browse-group-desc">' + escapeHtml(g.description) + '</div>' +
+        '<div class="browse-rows">';
+    for (let j = 0; j < g.parts.length; j++) {
+      const p = g.parts[j];
+      html +=
+        '<button class="browse-row" ' +
+          'data-query="' + escapeHtml(p.question) + '" ' +
+          'type="button">' +
+          '<span class="part-id">' + escapeHtml(p.part_id) + '</span>' +
+          '<span class="fab">' + escapeHtml(p.fab_label || p.fab_id) + '</span>' +
+          '<span class="signal">' + escapeHtml(g.signal) + '</span>' +
+          '<span class="arrow">&rarr;</span>' +
+        '</button>';
+    }
+    html += '</div></div>';
+  }
+  body.innerHTML = html;
+
+  // wire row clicks
+  body.querySelectorAll('.browse-row').forEach(function (row) {
+    row.addEventListener('click', function () {
+      const q = row.getAttribute('data-query');
+      const input = $('query-input');
+      input.value = q;
+      closeBrowseModal();
+      runQuery(q);
+    });
+  });
+}
+
+function openBrowseModal() {
+  $('browse-backdrop').classList.add('open');
+  loadCatalog().then(renderCatalog);
+}
+function closeBrowseModal() {
+  $('browse-backdrop').classList.remove('open');
+}
+
 // ---------- Wire up ----------
 
 function flashChip(chipEl) {
@@ -731,7 +810,7 @@ function init() {
     });
   }
 
-  // Modal
+  // How-it-works modal
   $('link-howitworks').addEventListener('click', function (e) {
     e.preventDefault();
     openModal();
@@ -741,10 +820,30 @@ function init() {
     if (e.target === $('modal-backdrop')) closeModal();
   });
 
+  // Browse parts modal
+  const browseLink = $('link-browse');
+  if (browseLink) {
+    browseLink.addEventListener('click', function (e) {
+      e.preventDefault();
+      openBrowseModal();
+    });
+  }
+  $('browse-close').addEventListener('click', closeBrowseModal);
+  $('browse-backdrop').addEventListener('click', function (e) {
+    if (e.target === $('browse-backdrop')) closeBrowseModal();
+  });
+
+  // Pre-fetch the catalog quietly so the first open is instant.
+  loadCatalog();
+
   // Keyboard shortcuts
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') {
-      if ($('modal-backdrop').classList.contains('open')) closeModal();
+      if ($('browse-backdrop').classList.contains('open')) {
+        closeBrowseModal();
+      } else if ($('modal-backdrop').classList.contains('open')) {
+        closeModal();
+      }
     }
     if (e.key === '?' && document.activeElement !== queryInput) {
       openModal();

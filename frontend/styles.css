@@ -248,6 +248,20 @@ button { font-family: inherit; cursor: pointer; }
   color: var(--bg-base);
   border-color: var(--accent-orange);
 }
+.browse-link {
+  font-family: var(--font-mono);
+  color: var(--fg-faint);
+  font-size: 10px;
+  cursor: pointer;
+  padding: 5px 6px;
+  border-bottom: 1px solid transparent;
+  transition: color 120ms ease, border-color 120ms ease;
+  user-select: none;
+}
+.browse-link:hover {
+  color: var(--accent-orange);
+  border-bottom-color: var(--accent-orange);
+}
 .run-btn {
   background: var(--accent-green);
   color: var(--bg-base);
@@ -697,6 +711,89 @@ button { font-family: inherit; cursor: pointer; }
   color: var(--fg-secondary);
   font-size: 12px;
   line-height: 1.5;
+}
+
+/* ====================== BROWSE PARTS MODAL ====================== */
+
+.browse-group {
+  padding: 20px 28px;
+  border-bottom: 1px solid var(--border);
+}
+.browse-group:last-child { border-bottom: none; }
+.browse-group-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+.browse-group-count {
+  font-family: var(--font-mono);
+  color: var(--fg-faint);
+  font-size: 10px;
+  letter-spacing: 0.8px;
+}
+.browse-group-desc {
+  font-family: var(--font-sans);
+  color: var(--fg-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+.browse-rows {
+  display: grid;
+  gap: 2px;
+}
+.browse-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 12px;
+  background: var(--bg-base);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+.browse-row:hover {
+  border-color: var(--accent-orange);
+  background: #0d1319;
+}
+.browse-row .part-id {
+  font-family: var(--font-mono);
+  color: var(--fg-primary);
+  font-size: 12px;
+  font-weight: 600;
+}
+.browse-row .fab {
+  font-family: var(--font-sans);
+  color: var(--fg-secondary);
+  font-size: 12px;
+}
+.browse-row .signal {
+  font-family: var(--font-mono);
+  color: var(--fg-faint);
+  font-size: 10px;
+  letter-spacing: 0.3px;
+}
+.browse-row .arrow {
+  font-family: var(--font-mono);
+  color: var(--fg-faint);
+  font-size: 13px;
+}
+.browse-row:hover .arrow { color: var(--accent-orange); }
+
+@media (max-width: 600px) {
+  .browse-row {
+    grid-template-columns: 1fr auto;
+    gap: 4px 10px;
+  }
+  .browse-row .signal { grid-column: 1 / -1; }
+  .browse-row .arrow { grid-row: 1; grid-column: 2; }
 }
 
 /* ====================== ANIMATIONS ====================== */

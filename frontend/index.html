@@ -53,6 +53,7 @@
             <button class="chip" data-driver="policy" data-query="Why is part 10279876 at risk of stocking out at the Taiwan fab, and what should I do?">policy drift &middot; 10279876</button>
             <button class="chip" data-driver="supply" data-query="Forecast the stockout risk for part 11527537 at the Santa Clara fab. Is the supplier the issue?">supply risk &middot; 11527537</button>
             <button class="chip" data-driver="demand" data-query="Diagnose the stockout risk for part 15317213 at the Dresden fab. What's driving demand?">demand shift &middot; 15317213</button>
+            <a class="browse-link" id="link-browse">+ browse all 18 parts</a>
           </div>
           <button class="run-btn" id="ask-btn">Run agent &rarr;</button>
         </div>
@@ -136,6 +137,27 @@
     </div>
 
   </main>
+
+  <!-- ============ BROWSE PARTS MODAL ============ -->
+  <div class="modal-backdrop" id="browse-backdrop">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="browse-title">
+      <div class="modal-head">
+        <div>
+          <div class="modal-head-eyebrow">// FABOPS COPILOT</div>
+          <div class="modal-head-title" id="browse-title">Browse parts</div>
+        </div>
+        <button class="modal-close" id="browse-close" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal-section" style="padding-top:20px;padding-bottom:12px">
+        <p class="modal-paragraph" style="font-size:13px;color:var(--fg-muted);line-height:1.6">
+          18 real parts from the seeded DynamoDB corpus, grouped by the driver the agent should identify. Click any row to run the agent against that part.
+        </p>
+      </div>
+      <div id="browse-body">
+        <!-- Groups rendered by JS from frontend/catalog.json -->
+      </div>
+    </div>
+  </div>
 
   <!-- ============ HOW IT WORKS MODAL ============ -->
   <div class="modal-backdrop" id="modal-backdrop">
