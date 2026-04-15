@@ -267,7 +267,7 @@ REPORT.md             4,279-word technical report (10 sections)
 
 Final project for **DS 5730-01 Context-Augmented Gen AI Apps**, Vanderbilt University, Spring 2026.
 
-The problem domain (semiconductor fab service parts) was chosen because it is a real industrial operations problem where agentic reasoning earns its keep: the evidence is scattered across six different sources, the right answer depends on policy-first ordering that most naive pipelines miss, and the data is genuinely public (Hyndman `carparts`, SEC EDGAR, FRED). The 10-section [REPORT.md](./REPORT.md) documents the methodology, the eval design, the cold-start investigation, the cross-family judge rationale, and an honest failure-modes section. Every claim in this README is cross-referenced there.
+The project applies context-augmented reasoning to an industrial operations problem where the evidence is scattered across six different sources and the right answer depends on policy-first ordering that most naive pipelines miss. The data is genuinely public (Hyndman `carparts`, SEC EDGAR, FRED). The 10-section [REPORT.md](./REPORT.md) documents the methodology, the eval design, the cold-start investigation, the cross-family judge rationale, and an honest failure-modes section. Every claim in this README is cross-referenced there.
 
 ## Credits
 
