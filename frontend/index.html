@@ -2,62 +2,208 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>FabOps Copilot — Service-Parts Stockout Risk Agent</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FabOps Copilot, service-parts stockout reasoning agent</title>
+  <meta name="description" content="9-node LangGraph agent that diagnoses why a service part is at stockout risk and recommends an action. Grounded in DynamoDB, SEC filings, and FRED.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
   <script src="config.js"></script>
 </head>
 <body>
-  <header>
-    <h1>FabOps Copilot</h1>
-    <span class="subtitle">Service-Parts Stockout Risk Agent</span>
+
+  <!-- ============ NAV ============ -->
+  <nav class="nav">
+    <div class="nav-left">
+      <div class="nav-status">
+        <div class="led pulse"></div>
+        <div class="nav-status-label">RUNTIME ONLINE</div>
+      </div>
+      <div class="nav-divider"></div>
+      <div class="nav-meta">us-east-1 · &lambda; fabops_agent_handler</div>
+    </div>
+    <div class="nav-links">
+      <a id="link-howitworks">how it works</a>
+      <a href="https://github.com/rroshann/fabops-copilot/blob/main/REPORT.md" target="_blank" rel="noopener">architecture</a>
+      <a href="https://github.com/rroshann/fabops-copilot" target="_blank" rel="noopener">github</a>
+    </div>
+  </nav>
+
+  <!-- ============ HERO ============ -->
+  <header class="hero" id="hero">
+    <div class="hero-eyebrow">// FABOPS COPILOT</div>
+    <h1 class="hero-headline">Diagnoses why a service part is at stockout risk and recommends an action.</h1>
+    <div class="hero-subline">9-node LangGraph &middot; MCP-native &middot; grounded in DynamoDB + SEC filings + FRED</div>
   </header>
 
   <main>
-    <section class="query-panel">
-      <label>Ask a question:</label>
-      <textarea id="query-input" rows="3"
-        placeholder="Why is part A7 about to stock out at the Taiwan fab, and what should I do?"></textarea>
-      <button id="ask-btn">Ask</button>
+
+    <!-- ============ QUERY PANEL ============ -->
+    <div class="card-stack" id="query-stack">
+      <section class="query-panel">
+        <div class="query-panel-head">
+          <div class="card-label">ASK THE AGENT</div>
+          <div class="query-hint">&#8984; + &#8629; to run</div>
+        </div>
+        <textarea id="query-input" rows="3" placeholder="Why is part 10279876 at risk of stocking out at the Taiwan fab, and what should I do?"></textarea>
+        <div class="query-panel-foot">
+          <div class="chips">
+            <span class="chips-label">EXAMPLES</span>
+            <button class="chip" data-driver="policy" data-query="Why is part 10279876 at risk of stocking out at the Taiwan fab, and what should I do?">policy drift &middot; 10279876</button>
+            <button class="chip" data-driver="supply" data-query="Forecast the stockout risk for part 11527537 at the Santa Clara fab. Is the supplier the issue?">supply risk &middot; 11527537</button>
+            <button class="chip" data-driver="demand" data-query="Diagnose the stockout risk for part 15317213 at the Dresden fab. What's driving demand?">demand shift &middot; 15317213</button>
+          </div>
+          <button class="run-btn" id="ask-btn">Run agent &rarr;</button>
+        </div>
+      </section>
       <div class="synthetic-label">
         Inventory, supplier lead-times, and incident notes are synthetic.
         Forecasts use the public Hyndman carparts benchmark. SEC filings are real Applied Materials disclosures.
       </div>
-    </section>
+    </div>
 
-    <section class="results-panel" id="results" style="display:none">
-      <div class="card plan">
-        <h3>Agent Plan</h3>
-        <ol id="agent-plan"></ol>
+    <!-- ============ LOADING / EXECUTION PANEL ============ -->
+    <div class="card-stack" id="loading-stack" hidden>
+      <section class="card exec-panel" id="exec-panel">
+        <div class="exec-head">
+          <div class="card-label">AGENT EXECUTION</div>
+          <div class="exec-status">
+            <div class="led pulse"></div>
+            <div class="exec-status-text">RUNNING</div>
+          </div>
+        </div>
+        <div class="progress" id="progress-bar"></div>
+        <div class="node-log" id="node-log"></div>
+      </section>
+    </div>
+
+    <!-- ============ RESULTS ============ -->
+    <div id="results-wrapper" hidden>
+      <div class="query-echo">
+        <div class="query-echo-label">QUERY</div>
+        <div class="query-echo-body" id="query-echo-body"></div>
       </div>
+      <div class="card-stack">
 
-      <div class="card diagnosis">
-        <h3>Diagnosis</h3>
-        <div><strong>Primary driver:</strong> <span id="primary-driver">—</span></div>
-        <div><strong>P90 stockout date:</strong> <span id="stockout-date">—</span></div>
-        <div><strong>Confidence:</strong> <span id="confidence">—</span></div>
+        <section class="card diagnosis" id="diagnosis-card">
+          <div class="diagnosis-head">
+            <div class="card-label">DIAGNOSIS</div>
+            <div class="exec-status">
+              <div class="led"></div>
+              <div class="exec-status-text" id="diagnosis-meta">VERIFIED</div>
+            </div>
+          </div>
+          <div class="diagnosis-paragraph" id="diagnosis-paragraph"></div>
+          <div class="stat-row" id="stat-row"></div>
+        </section>
+
+        <section class="card action" id="action-card">
+          <div class="action-head">RECOMMENDED ACTION</div>
+          <div class="action-headline" id="action-headline"></div>
+          <div class="action-rationale" id="action-rationale"></div>
+        </section>
+
+        <section class="card citations" id="citations-card">
+          <div class="citations-head" id="citations-head">CITATIONS</div>
+          <div id="citations-body"></div>
+        </section>
+
+        <section class="card exec-panel" id="audit-card">
+          <div class="audit-collapsed" id="audit-toggle">
+            <div class="audit-collapsed-meta" id="audit-summary">AUDIT TRAIL</div>
+            <div class="audit-collapsed-meta" id="audit-toggle-icon">&#9660; expand</div>
+          </div>
+          <div class="audit-body" id="audit-body" hidden>
+            <div class="progress" id="audit-progress"></div>
+            <div class="node-log" id="audit-log"></div>
+          </div>
+        </section>
+
+        <div style="display:flex;justify-content:center;padding:8px 0 32px">
+          <button class="chip" id="new-query-btn" style="font-size:11px;padding:8px 14px">&larr; new query</button>
+        </div>
+
       </div>
+    </div>
 
-      <div class="card citations">
-        <h3>Citations / Audit Trail</h3>
-        <ol id="citations-list"></ol>
-      </div>
+    <!-- ============ ERROR ============ -->
+    <div class="card-stack" id="error-stack" hidden>
+      <section class="card error-card">
+        <div class="label">RUNTIME ERROR</div>
+        <div class="body" id="error-body"></div>
+      </section>
+    </div>
 
-      <div class="card action">
-        <h3>Recommended Action</h3>
-        <div id="action-text">—</div>
-      </div>
-
-      <div class="card answer">
-        <h3>Full Answer</h3>
-        <pre id="answer-text"></pre>
-      </div>
-    </section>
-
-    <section class="loading" id="loading" style="display:none">
-      <div class="spinner"></div>
-      <div>Running agent — policy → demand → supply → diagnose → verify...</div>
-    </section>
   </main>
+
+  <!-- ============ HOW IT WORKS MODAL ============ -->
+  <div class="modal-backdrop" id="modal-backdrop">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-head">
+        <div>
+          <div class="modal-head-eyebrow">// FABOPS COPILOT</div>
+          <div class="modal-head-title" id="modal-title">How it works</div>
+        </div>
+        <button class="modal-close" id="modal-close" aria-label="Close">&times;</button>
+      </div>
+
+      <div class="modal-section">
+        <div class="modal-section-label">&sect;1 &middot; WHAT IT IS</div>
+        <p class="modal-paragraph">FabOps Copilot diagnoses why a fab service part is at risk of stockout and recommends one of four actions. It's a 9-node LangGraph agent with seven tool functions. It doesn't just call an LLM, it pulls real numbers from DynamoDB, grounds its reasoning in SEC EDGAR filings and FRED macro signals, and produces an audit trail every step.</p>
+      </div>
+
+      <div class="modal-section">
+        <div class="modal-section-label">&sect;2 &middot; THE FOUR DRIVERS</div>
+        <div class="driver-list">
+          <div class="driver-row">
+            <div class="driver-chip policy">POLICY DRIFT</div>
+            <div class="desc">Reorder point was computed against old demand. The number is stale, not wrong. Action: <strong>refresh the policy</strong>.</div>
+          </div>
+          <div class="driver-row">
+            <div class="driver-chip supply">SUPPLY RISK</div>
+            <div class="desc">A supplier is degrading: lead-time slipping, on-time delivery dropping. Action: <strong>expedite or qualify a backup</strong>.</div>
+          </div>
+          <div class="driver-row">
+            <div class="driver-chip demand">DEMAND SHIFT</div>
+            <div class="desc">Real demand has stepped up, visible in the forecast and corroborated by macro signals or filings. Action: <strong>place a reorder at the new run-rate</strong>.</div>
+          </div>
+          <div class="driver-row">
+            <div class="driver-chip none">NONE</div>
+            <div class="desc">Numbers are noisy but no real driver. Action: <strong>monitor</strong>. Critical: agents that always find a problem are useless.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-section">
+        <div class="modal-section-label">&sect;3 &middot; THE 9-NODE GRAPH</div>
+<pre class="graph-block"><span class="num">1.</span> entry                    <span class="comment">// parse query, identify part + site</span>
+<span class="num">2.</span> check_policy_staleness   <span class="comment">// fabops_policies → staleness_days</span>
+<span class="num">3.</span> check_demand_drift       <span class="comment">// croston forecast vs actuals</span>
+<span class="num">4.</span> check_supply_drift       <span class="comment">// supplier history → degrading?</span>
+<span class="num">5.</span> ground_in_disclosures    <span class="comment">// SEC EDGAR + FRED retrieval</span>
+<span class="num">6.</span> diagnose                 <span class="comment">// gemini-flash, pick the driver</span>
+<span class="num">7.</span> prescribe_action         <span class="comment">// driver → one of 4 actions</span>
+<span class="num">8.</span> verify                   <span class="comment">// optional cross-check (gated)</span>
+<span class="num">9.</span> finalize                 <span class="comment">// emit answer + citations + audit</span></pre>
+        <div class="graph-caption">Every node writes to a DynamoDB audit spine, so every claim the agent makes is traceable to the tool call that produced it.</div>
+      </div>
+
+      <div class="modal-section">
+        <div class="modal-section-label">&sect;4 &middot; WHAT'S REAL, WHAT'S NOT</div>
+        <div class="provenance-grid">
+          <div class="provenance-card real">
+            <div class="label">REAL</div>
+            <div class="desc">SEC EDGAR filings (Applied Materials 10-K and 10-Q) &middot; FRED macro indices &middot; Hyndman carparts demand benchmark &middot; Gemini embeddings &middot; the agent itself</div>
+          </div>
+          <div class="provenance-card synthetic">
+            <div class="label">SYNTHETIC</div>
+            <div class="desc">Inventory levels &middot; supplier lead-times &middot; incident notes &middot; the part catalog. Generated to exercise all four driver paths cleanly.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script src="app.js"></script>
 </body>

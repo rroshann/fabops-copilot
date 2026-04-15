@@ -56,6 +56,9 @@ evals/adversarial_set.json
 evals/results/gold_run.json
 evals/results/judge_cache.json
 
+# Brainstorming session artifacts
+.superpowers/
+
 # IDE
 .vscode/
 .idea/

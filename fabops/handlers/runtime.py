@@ -60,12 +60,32 @@ def handler(event, context):
             diagnosis = final_state.get("diagnosis", {})
             demand_check = final_state.get("demand_check", {})
             step_n = final_state.get("step_n", 0)
+            tool_calls_raw = final_state.get("tool_calls", []) or []
         else:
             answer = final_state.final_answer or ""
             citations = final_state.citations
             diagnosis = final_state.diagnosis or {}
             demand_check = final_state.demand_check or {}
             step_n = final_state.step_n
+            tool_calls_raw = final_state.tool_calls or []
+
+        # Normalize tool_calls into a frontend-friendly audit array.
+        # Each entry exposes node + duration_ms + ok + tool name.
+        # Pydantic models are dumped via model_dump; dict items pass through.
+        audit_trail = []
+        for tc in tool_calls_raw:
+            if hasattr(tc, "model_dump"):
+                d = tc.model_dump()
+            elif isinstance(tc, dict):
+                d = tc
+            else:
+                continue
+            audit_trail.append({
+                "node": d.get("node", ""),
+                "tool": d.get("tool", ""),
+                "duration_ms": int(round(float(d.get("latency_ms", 0)))),
+                "ok": bool(d.get("ok", True)),
+            })
 
         return _response(200, {
             "request_id": request_id,
@@ -74,6 +94,7 @@ def handler(event, context):
             "p90_stockout_date": demand_check.get("p90_stockout_date"),
             "citations": citations,
             "step_count": step_n,
+            "audit": audit_trail,
         })
     except Exception as e:
         tb = traceback.format_exc()
