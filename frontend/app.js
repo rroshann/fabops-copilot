@@ -1,19 +1,78 @@
 // FabOps Copilot frontend logic.
 // Direction A polish pass. Vanilla JS, no build step.
 
-// ---------- Pre-warm ----------
-// Wake the Lambda the moment the page loads so the user's first real query
-// doesn't pay the cold-start cost. The agent rejects empty queries with a
-// 400, which is fine. Failures are silent.
-(function preWarm() {
-  try {
-    fetch(window.FABOPS_API, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: '__warmup__' }),
-    }).catch(function () {});
-  } catch (_) {}
-})();
+// ---------- Warmup polling ----------
+// The runtime Lambda has a ~50s cold start that breaches the 30s API
+// Gateway cap. A single warmup POST gets a 503 and tells us nothing.
+// Instead, poll the API every 4 seconds with the __warmup__ sentinel.
+// The agent returns 400 ('query field required') when reachable. On
+// 400 we know Lambda is warm and we set lambdaWarm = true. The nav
+// LED reflects this state. The Run button is always clickable, but
+// clicks before warm wait for the warmup to finish before firing the
+// real query.
+
+let lambdaWarm = false;
+let warmupPromise = null;
+
+function warmupOnce() {
+  return fetch(window.FABOPS_API, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query: '__warmup__' }),
+  }).then(function (resp) { return resp.status; }).catch(function () { return 0; });
+}
+
+function startWarmupPolling() {
+  if (lambdaWarm || warmupPromise) return warmupPromise || Promise.resolve();
+  // Try aggressively at first, then back off. Total budget ~120s.
+  const SCHEDULE_MS = [0, 4000, 4000, 4000, 4000, 4000, 6000, 6000, 8000, 8000, 10000, 12000, 14000, 16000, 20000];
+  warmupPromise = (function loop(idx) {
+    return new Promise(function (resolve) {
+      setTimeout(function () {
+        warmupOnce().then(function (status) {
+          // 400 = Lambda reachable and rejected our sentinel (the goal)
+          // 200/500 = Lambda reachable for some other reason (also warm)
+          // 503/0/504 = API Gateway timed out, Lambda still cold or unreachable
+          if (status >= 200 && status < 500 && status !== 0) {
+            lambdaWarm = true;
+            updateNavStatus();
+            resolve();
+            return;
+          }
+          if (idx + 1 >= SCHEDULE_MS.length) {
+            // Give up the polling. Mark warm anyway, the user's real
+            // query will surface any error.
+            lambdaWarm = true;
+            updateNavStatus();
+            resolve();
+            return;
+          }
+          loop(idx + 1).then(resolve);
+        });
+      }, SCHEDULE_MS[idx]);
+    });
+  })(0);
+  return warmupPromise;
+}
+
+function updateNavStatus() {
+  const led = document.querySelector('.nav .led');
+  const label = document.querySelector('.nav .nav-status-label');
+  if (!led || !label) return;
+  if (lambdaWarm) {
+    led.style.background = 'var(--accent-green)';
+    led.style.boxShadow = '0 0 10px var(--accent-green), 0 0 2px var(--accent-green)';
+    led.classList.remove('pulse');
+    label.style.color = 'var(--accent-green)';
+    label.textContent = 'RUNTIME ONLINE';
+  } else {
+    led.style.background = 'var(--accent-orange)';
+    led.style.boxShadow = '0 0 10px var(--accent-orange), 0 0 2px var(--accent-orange)';
+    led.classList.add('pulse');
+    label.style.color = 'var(--accent-orange)';
+    label.textContent = 'RUNTIME WARMING';
+  }
+}
 
 // ---------- Constants ----------
 
@@ -214,9 +273,80 @@ function runQuery(query) {
   hide($('results-wrapper'));
   hide($('error-stack'));
   show($('loading-stack'));
-  startAnimation();
 
-  attemptFetch(query);
+  if (lambdaWarm) {
+    // Fast path. Animation runs while the warm Lambda processes.
+    startAnimation();
+    attemptFetch(query);
+  } else {
+    // Cold path. Show a warming state in the same panel, await the
+    // polling warmup, then start the real animation and fire the query.
+    showWarmingState();
+    startWarmupPolling().then(function () {
+      hideWarmingState();
+      startAnimation();
+      attemptFetch(query);
+    });
+  }
+}
+
+function showWarmingState() {
+  const progressEl = $('progress-bar');
+  const logEl = $('node-log');
+  buildExecutionMarkup(progressEl, logEl);
+  // Set all 9 progress segments to a slow pulsing orange to indicate warming.
+  const segs = progressEl.querySelectorAll('.progress-segment');
+  segs.forEach(function (s) {
+    s.style.background = 'var(--accent-orange)';
+    s.style.opacity = '0.4';
+    s.style.animation = 'pulse 2s infinite';
+  });
+  // Replace per-node log with a single warming row.
+  logEl.innerHTML =
+    '<div class="node-row" style="color:var(--accent-orange)">' +
+      '<span class="glyph">' + '\u25CB' + '</span>' +
+      '<span class="name">cold lambda detected, warming runtime container</span>' +
+      '<span class="meta">~30 to 60s, one time</span>' +
+    '</div>' +
+    '<div style="font-family:var(--font-sans);color:var(--fg-muted);font-size:11px;line-height:1.5;margin-top:14px">' +
+      'API Gateway has a 30s timeout that does not survive the first cold-start. ' +
+      'Once the runtime is up, every query in the next 15 minutes runs in 10 to 17 seconds.' +
+    '</div>';
+  // Update exec status text on the right of the panel
+  const statusText = document.querySelector('#exec-panel .exec-status-text');
+  if (statusText) {
+    statusText.textContent = 'WARMING';
+    statusText.style.color = 'var(--accent-orange)';
+  }
+  const statusLed = document.querySelector('#exec-panel .led');
+  if (statusLed) {
+    statusLed.style.background = 'var(--accent-orange)';
+    statusLed.style.boxShadow = '0 0 10px var(--accent-orange)';
+  }
+}
+
+function hideWarmingState() {
+  // Reset progress segments to default state for the real animation
+  const progressEl = $('progress-bar');
+  if (progressEl) {
+    const segs = progressEl.querySelectorAll('.progress-segment');
+    segs.forEach(function (s) {
+      s.style.background = '';
+      s.style.opacity = '';
+      s.style.animation = '';
+    });
+  }
+  // Reset exec panel status to RUNNING in green
+  const statusText = document.querySelector('#exec-panel .exec-status-text');
+  if (statusText) {
+    statusText.textContent = 'RUNNING';
+    statusText.style.color = '';
+  }
+  const statusLed = document.querySelector('#exec-panel .led');
+  if (statusLed) {
+    statusLed.style.background = '';
+    statusLed.style.boxShadow = '';
+  }
 }
 
 function attemptFetch(query) {
@@ -234,16 +364,19 @@ function attemptFetch(query) {
       });
     })
     .then(function (result) {
-      // Auto-retry once on a 503 (API Gateway cold-start timeout). The
-      // failed attempt warms the Lambda, so the retry usually succeeds
-      // in 5 to 10 seconds. The animation keeps running, the user sees
-      // a slightly longer wait but no error.
+      // Single retry on 503. We do NOT restart the animation, we leave
+      // it where it is and try again silently. The Lambda is warm by
+      // now from the failed attempt, so this normally succeeds.
       if (!coldRetryUsed && result.status === 503) {
         coldRetryUsed = true;
-        // restart the animation from the beginning so the user sees fresh progress
-        clearAnimation();
-        startAnimation();
-        attemptFetch(query);
+        lambdaWarm = false;
+        warmupPromise = null;
+        // Re-warm and retry. The animation continues showing whatever
+        // state it was in. Once warm, we fire again. If the response
+        // beats the animation, it fast-forwards normally.
+        startWarmupPolling().then(function () {
+          attemptFetch(query);
+        });
         return;
       }
 
@@ -541,6 +674,10 @@ function flashChip(chipEl) {
 }
 
 function init() {
+  // Show warming state in the nav immediately and start polling.
+  updateNavStatus();
+  startWarmupPolling();
+
   const askBtn = $('ask-btn');
   const queryInput = $('query-input');
 
