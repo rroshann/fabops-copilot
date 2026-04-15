@@ -1,3 +1,17 @@
+// Pre-warm the Lambda the moment the page loads so the user's first real
+// query doesn't pay the ~50s cold-start cost. The agent rejects empty
+// queries with a 400, which is fine — we only care about waking up the
+// container and warming the EDGAR chunk cache. Failures are silent.
+(function preWarm() {
+  try {
+    fetch(window.FABOPS_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: '__warmup__' }),
+    }).catch(() => {});
+  } catch (_) {}
+})();
+
 document.getElementById('ask-btn').addEventListener('click', async () => {
   const query = document.getElementById('query-input').value.trim();
   if (!query) return;
