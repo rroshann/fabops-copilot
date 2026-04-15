@@ -30,9 +30,30 @@ def _compute_forecast_from_history(part_id: str, horizon: int) -> dict:
     Only used on cache miss. Slow-ish but keeps runtime honest.
     numpy and _croston_numpy are imported lazily here so the Lambda cold-start
     import path does not fail when numpy is absent from the zip.
+
+    On Lambda, numpy is deliberately not bundled. If this fallback fires
+    there (cache miss and no numpy), we return a zero-demand stub so the
+    downstream nodes can proceed with a safe default instead of crashing
+    the whole request. The agent degrades to "no forecast" rather than
+    "500 error". This should never fire in practice because the nightly
+    bake populates the cache for every known part, but defensive.
     """
-    from fabops.data.carparts import load_carparts
-    from fabops.tools._croston_numpy import croston as _croston
+    try:
+        from fabops.data.carparts import load_carparts
+        from fabops.tools._croston_numpy import croston as _croston
+    except ModuleNotFoundError:
+        # numpy not available (Lambda runtime). Return a safe zero-demand stub.
+        zero = [0.0] * horizon
+        return {
+            "forecast": zero,
+            "p10": zero,
+            "p90": zero,
+            "model": "unavailable",
+            "sMAPE": None,
+            "MASE": None,
+            "note": "numpy fallback unavailable in runtime; cache miss returned zero-demand stub",
+        }
+
     df = load_carparts()
     part_demand = df[df["part_id"] == part_id].sort_values("month")["demand"].tolist()
     yhat, p10, p90 = _croston(part_demand, horizon=horizon, variant="sba")
