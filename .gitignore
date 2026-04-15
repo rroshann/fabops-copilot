@@ -53,6 +53,8 @@ logs/
 
 # Generated eval artifacts (produced by scripts; not committed)
 evals/adversarial_set.json
+evals/results/gold_run.json
+evals/results/judge_cache.json
 
 # IDE
 .vscode/
