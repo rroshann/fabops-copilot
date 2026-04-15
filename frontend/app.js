@@ -74,6 +74,7 @@ let inFlightController = null;
 let animationTimers = [];
 let animationDone = false;
 let responseArrived = false;
+let coldRetryUsed = false;
 
 function clearAnimation() {
   animationTimers.forEach(function (t) { clearTimeout(t); });
@@ -206,6 +207,7 @@ function runQuery(query) {
     try { inFlightController.abort(); } catch (_) {}
   }
   inFlightController = new AbortController();
+  coldRetryUsed = false;
 
   // hide other states, show loading
   hide($('query-stack'));
@@ -214,6 +216,10 @@ function runQuery(query) {
   show($('loading-stack'));
   startAnimation();
 
+  attemptFetch(query);
+}
+
+function attemptFetch(query) {
   fetch(window.FABOPS_API, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -223,12 +229,27 @@ function runQuery(query) {
     .then(function (resp) {
       return resp.json().then(function (data) {
         return { ok: resp.ok, status: resp.status, data: data };
+      }).catch(function () {
+        return { ok: resp.ok, status: resp.status, data: {} };
       });
     })
     .then(function (result) {
+      // Auto-retry once on a 503 (API Gateway cold-start timeout). The
+      // failed attempt warms the Lambda, so the retry usually succeeds
+      // in 5 to 10 seconds. The animation keeps running, the user sees
+      // a slightly longer wait but no error.
+      if (!coldRetryUsed && result.status === 503) {
+        coldRetryUsed = true;
+        // restart the animation from the beginning so the user sees fresh progress
+        clearAnimation();
+        startAnimation();
+        attemptFetch(query);
+        return;
+      }
+
       responseArrived = true;
-      if (!result.ok || result.data && result.data.error) {
-        const msg = (result.data && result.data.error) || ('HTTP ' + result.status);
+      if (!result.ok || (result.data && result.data.error)) {
+        const msg = extractErrorMessage(result);
         renderError(msg);
         return;
       }
@@ -239,6 +260,16 @@ function runQuery(query) {
       responseArrived = true;
       renderError((err && err.message) || 'Network error');
     });
+}
+
+function extractErrorMessage(result) {
+  const d = result.data || {};
+  if (result.status === 503) {
+    return 'The Lambda did not respond in time even after a warm retry. This usually clears in a minute. Try again, or click an example chip while the runtime stays warm.';
+  }
+  if (d.error) return d.error;
+  if (d.message) return d.message + ' (HTTP ' + result.status + ')';
+  return 'HTTP ' + result.status;
 }
 
 function finishAndRender(query, data) {
