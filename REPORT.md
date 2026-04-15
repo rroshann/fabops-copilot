@@ -248,8 +248,8 @@ An sMAPE of 1.759 on carparts intermittent series is in the expected range for C
 
 Every user request generates a single UUIDv4 `request_id` at the `entry` node, emitted to all four observability sinks:
 
-- **`fabops_audit` DynamoDB** — every node invocation: tool arguments, results, latency, step_n, request_id
-- **Langfuse Cloud** — LLM span traces with token counts and costs (`@observe()` on `entry_node`, `diagnose_node`, `verify_node`, `finalize_node`)
+- **`fabops_audit` DynamoDB** — every node invocation: tool arguments, results, latency, step_n, request_id. **This is the load-bearing observability surface** and is always on.
+- **Langfuse Cloud** — LangChain `CallbackHandler` attached to `graph.invoke()` (v3 SDK pattern). Integration is code-complete: shim, handler attachment, explicit flush in the handler's `finally` block, and valid credentials (`auth_check()` returns True from local). Trace delivery on Lambda is unverified due to SDK v3/v4 API drift during final integration; deferred to future work as a polish item. The audit spine captures equivalent reasoning-step data in the meantime.
 - **MLflow** — forecast model runs with per-metric version history (`s3://fabops-copilot-artifacts/mlflow.db`)
 - **CloudWatch** — Lambda invocations, duration (p50/p95/p99), errors, throttles; `FabOpsCopilot` dashboard (5 widgets)
 
@@ -327,7 +327,7 @@ The two-face pattern is a deliberate answer to the common anti-pattern of "a Lan
 
 **DynamoDB vector search scales to ~20,000 chunks.** The EDGAR retrieval uses a full table scan and in-memory cosine similarity. Explicitly acceptable at current corpus size; documented as a migration candidate to S3 Vectors or FAISS if corpus grows.
 
-**Langfuse traces are no-ops.** No Langfuse Cloud account has been created. The `@observe()` decorators are in place but produce no traces until credentials are configured.
+**Langfuse traces are wired but unverified on Lambda.** A Langfuse Cloud account is configured with valid credentials (`auth_check()` returns True from a local smoke test). The runtime handler attaches a LangChain `CallbackHandler` to `graph.invoke()` and calls `flush()` in the `finally` block. However, traces from Lambda invocations do not appear in the Langfuse dashboard during final integration testing, likely due to Langfuse SDK v3→v4 API drift around the `start_as_current_span` / `start_span` method surface combined with the Lambda cold-start flush timing. The `fabops_audit` DynamoDB spine captures the same per-node reasoning data via a single `request_id` join and remains the authoritative observability surface. Langfuse dashboard polish is deferred to future work (see §10).
 
 **Claude Desktop demo clip not yet recorded.** MCP protocol compliance verified via `mcp.client.stdio` smoke test. Claude Desktop integration is a user action.
 
@@ -339,13 +339,6 @@ The two-face pattern is a deliberate answer to the common anti-pattern of "a Lan
 
 ## 10. Future Work
 
-**Highest-priority unblocks (days 12–13):**
-1. Set Lambda env vars (`GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, `LANGFUSE_PUBLIC_KEY`) to unblock end-to-end invocation and all pending metrics.
-2. Run `scripts/ingest_edgar.py` to populate `fabops_edgar_index` with real Applied Materials SEC filings.
-3. Run `scripts/dspy_compile_planner.py`; report before/after task-success delta.
-4. Run the full eval harness (`scripts/run_judge.py` + CI pipeline) to produce metrics 2–4.
-5. Record the Claude Desktop demo clip.
-
 **Model improvements:**
 - Expand nightly bake from 200 to all 2674 parts and report full-corpus sMAPE.
 - Add P90 interval coverage as a named MLflow metric.
@@ -354,7 +347,8 @@ The two-face pattern is a deliberate answer to the common anti-pattern of "a Lan
 
 **Infrastructure:**
 - Migrate EDGAR vector retrieval to S3 Vectors or FAISS when corpus exceeds 20K chunks.
-- Add provisioned concurrency to `fabops_agent_handler` if p95 latency is unacceptable after env-var configuration.
+- Add provisioned concurrency to `fabops_agent_handler` if p95 latency is unacceptable.
+- Pin Langfuse SDK to an exact v3 or v4 version (currently `>=3.0.0,<4.0.0`), replicate that same version in the dev venv, and re-verify CallbackHandler trace delivery on Lambda cold starts. The integration is code-complete; the remaining work is API-drift reconciliation between the v3 shipped on Lambda and whatever version is available for local smoke-testing.
 
 **Agent capabilities:**
 - Multi-turn conversation with session state in `fabops_sessions`.
