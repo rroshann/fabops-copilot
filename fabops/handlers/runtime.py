@@ -57,17 +57,32 @@ def handler(event, context):
         if isinstance(final_state, dict):
             answer = final_state.get("final_answer", "")
             citations = final_state.get("citations", [])
-            diagnosis = final_state.get("diagnosis", {})
+            diagnosis = dict(final_state.get("diagnosis") or {})
+            prescription = final_state.get("prescription") or {}
             demand_check = final_state.get("demand_check", {})
             step_n = final_state.get("step_n", 0)
             tool_calls_raw = final_state.get("tool_calls", []) or []
         else:
             answer = final_state.final_answer or ""
             citations = final_state.citations
-            diagnosis = final_state.diagnosis or {}
+            diagnosis = dict(final_state.diagnosis or {})
+            prescription = final_state.prescription or {}
             demand_check = final_state.demand_check or {}
             step_n = final_state.step_n
             tool_calls_raw = final_state.tool_calls or []
+
+        # Merge prescription.action into diagnosis so the frontend has a
+        # single object to render. The agent stores diagnosis (driver +
+        # confidence + reasoning) and prescription (action) separately
+        # in state; the frontend wants them together.
+        if prescription:
+            if "action" in prescription and "action" not in diagnosis:
+                diagnosis["action"] = prescription["action"]
+            # Surface driver-specific metrics if present
+            for k in ("policy_age_days", "staleness_days",
+                      "leadtime_slip_days", "run_rate_delta_pct"):
+                if k in prescription and k not in diagnosis:
+                    diagnosis[k] = prescription[k]
 
         # Normalize tool_calls into a frontend-friendly audit array.
         # Each entry exposes node + duration_ms + ok + tool name.
