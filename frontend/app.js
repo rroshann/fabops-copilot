@@ -744,6 +744,175 @@ function closeBrowseModal() {
   $('browse-backdrop').classList.remove('open');
 }
 
+// ---------- Full catalog modal (200 parts x 9 fabs) ----------
+
+let inventoryData = null;
+let inventoryFetchPromise = null;
+let catalogSearchTerm = '';
+let catalogDriftOnly = false;
+const DRIVER_BADGE_LABEL = {
+  policy: 'POLICY DRIFT',
+  supply: 'SUPPLY RISK',
+  demand: 'DEMAND SHIFT',
+  healthy: 'HEALTHY',
+};
+
+function loadInventory() {
+  if (inventoryData) return Promise.resolve(inventoryData);
+  if (inventoryFetchPromise) return inventoryFetchPromise;
+  inventoryFetchPromise = fetch('inventory.json', { cache: 'no-cache' })
+    .then(function (r) {
+      if (!r.ok) throw new Error('inventory.json HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function (data) {
+      inventoryData = data;
+      return data;
+    })
+    .catch(function (err) {
+      inventoryFetchPromise = null;
+      console.error('inventory load failed', err);
+      return null;
+    });
+  return inventoryFetchPromise;
+}
+
+function filteredParts() {
+  if (!inventoryData || !inventoryData.parts) return [];
+  let parts = inventoryData.parts;
+  if (catalogDriftOnly) {
+    parts = parts.filter(function (p) { return p.status !== 'healthy'; });
+  }
+  const q = catalogSearchTerm.trim().toLowerCase();
+  if (q) {
+    parts = parts.filter(function (p) {
+      return p.part_id.toLowerCase().indexOf(q) !== -1;
+    });
+  }
+  return parts;
+}
+
+function renderCatalogBody() {
+  const body = $('catalog-body');
+  const countEl = $('catalog-count');
+  if (!inventoryData) {
+    body.innerHTML = '<div class="catalog-empty">Loading catalog...</div>';
+    countEl.textContent = '';
+    return;
+  }
+  const parts = filteredParts();
+  const totalLabel =
+    parts.length + ' OF ' + inventoryData.total_parts + ' PARTS';
+  countEl.textContent = totalLabel;
+
+  if (parts.length === 0) {
+    const q = escapeHtml(catalogSearchTerm.trim());
+    body.innerHTML =
+      '<div class="catalog-empty">' +
+        'No parts match ' + (q ? '<code>' + q + '</code>' : 'your filter') + '.<br>' +
+        'Try a prefix like <code>102</code> or <code>115</code>.' +
+      '</div>';
+    return;
+  }
+
+  let html = '';
+  for (let i = 0; i < parts.length; i++) {
+    const p = parts[i];
+    const statusLabel = DRIVER_BADGE_LABEL[p.status] || 'HEALTHY';
+    html +=
+      '<div class="catalog-row" data-part-id="' + escapeHtml(p.part_id) + '">' +
+        '<div class="catalog-row-head">' +
+          '<span class="catalog-row-status ' + escapeHtml(p.status) + '">' +
+            escapeHtml(statusLabel) +
+          '</span>' +
+          '<span class="catalog-row-partid" data-action="insert-part">' +
+            escapeHtml(p.part_id) +
+          '</span>' +
+          '<span class="catalog-row-meta">' +
+            (p.fabs ? p.fabs.length : 0) + ' FABS' +
+          '</span>' +
+          '<span class="catalog-row-expand">&#9656;</span>' +
+        '</div>' +
+        '<div class="catalog-row-fabs" hidden>';
+    if (p.fabs && p.fabs.length) {
+      for (let j = 0; j < p.fabs.length; j++) {
+        const f = p.fabs[j];
+        const isZero = Number(f.on_hand) === 0;
+        html +=
+          '<button class="catalog-fab" type="button" ' +
+            'data-part-id="' + escapeHtml(p.part_id) + '" ' +
+            'data-fab-id="' + escapeHtml(f.fab_id) + '" ' +
+            'data-fab-label="' + escapeHtml(f.fab_label) + '">' +
+            '<span class="catalog-fab-name">' + escapeHtml(f.fab_label) + '</span>' +
+            '<span class="catalog-fab-stock' + (isZero ? ' zero' : '') + '">' +
+              'on_hand=' + escapeHtml(f.on_hand) +
+            '</span>' +
+          '</button>';
+      }
+    }
+    html += '</div></div>';
+  }
+  body.innerHTML = html;
+}
+
+function toggleCatalogRow(row) {
+  const fabs = row.querySelector('.catalog-row-fabs');
+  if (!fabs) return;
+  if (fabs.hasAttribute('hidden')) {
+    fabs.removeAttribute('hidden');
+    row.classList.add('open');
+  } else {
+    fabs.setAttribute('hidden', '');
+    row.classList.remove('open');
+  }
+}
+
+function insertIntoQuery(text) {
+  const input = $('query-input');
+  const current = input.value;
+  if (!current.trim()) {
+    input.value = text;
+  } else if (current.indexOf(text) !== -1) {
+    // already there, do nothing
+  } else {
+    // insert at cursor position if we have selection, otherwise append
+    const start = input.selectionStart;
+    const end = input.selectionEnd;
+    if (typeof start === 'number' && typeof end === 'number') {
+      const before = current.slice(0, start);
+      const after = current.slice(end);
+      const needsSpaceBefore = before.length > 0 && !before.endsWith(' ');
+      const needsSpaceAfter = after.length > 0 && !after.startsWith(' ');
+      input.value =
+        before +
+        (needsSpaceBefore ? ' ' : '') +
+        text +
+        (needsSpaceAfter ? ' ' : '') +
+        after;
+      const newPos = before.length + (needsSpaceBefore ? 1 : 0) + text.length;
+      input.selectionStart = input.selectionEnd = newPos;
+    } else {
+      input.value = current + ' ' + text;
+    }
+  }
+  input.focus();
+}
+
+function openCatalogModal() {
+  $('catalog-backdrop').classList.add('open');
+  const input = $('catalog-search-input');
+  loadInventory().then(function () {
+    renderCatalogBody();
+    if (input) {
+      setTimeout(function () { input.focus(); }, 50);
+    }
+  });
+}
+
+function closeCatalogModal() {
+  $('catalog-backdrop').classList.remove('open');
+}
+
 // ---------- Wire up ----------
 
 function flashChip(chipEl) {
@@ -820,7 +989,7 @@ function init() {
     if (e.target === $('modal-backdrop')) closeModal();
   });
 
-  // Browse parts modal
+  // Browse parts modal (18 curated drift cases)
   const browseLink = $('link-browse');
   if (browseLink) {
     browseLink.addEventListener('click', function (e) {
@@ -833,19 +1002,97 @@ function init() {
     if (e.target === $('browse-backdrop')) closeBrowseModal();
   });
 
-  // Pre-fetch the catalog quietly so the first open is instant.
+  // Full catalog modal (200 parts x 9 fabs)
+  const catalogLink = $('link-catalog');
+  if (catalogLink) {
+    catalogLink.addEventListener('click', function (e) {
+      e.preventDefault();
+      openCatalogModal();
+    });
+  }
+  $('catalog-close').addEventListener('click', closeCatalogModal);
+  $('catalog-backdrop').addEventListener('click', function (e) {
+    if (e.target === $('catalog-backdrop')) closeCatalogModal();
+  });
+
+  // Catalog search
+  const searchInput = $('catalog-search-input');
+  if (searchInput) {
+    searchInput.addEventListener('input', function () {
+      catalogSearchTerm = searchInput.value || '';
+      renderCatalogBody();
+    });
+  }
+
+  // Catalog drift-only toggle
+  const driftToggle = $('catalog-drift-only');
+  if (driftToggle) {
+    driftToggle.addEventListener('change', function () {
+      catalogDriftOnly = driftToggle.checked;
+      renderCatalogBody();
+    });
+  }
+
+  // Catalog body: event delegation for row expand and insert clicks
+  const catalogBody = $('catalog-body');
+  if (catalogBody) {
+    catalogBody.addEventListener('click', function (e) {
+      const target = e.target;
+
+      // Click on a specific fab = insert both part and fab, close, done
+      const fabBtn = target.closest ? target.closest('.catalog-fab') : null;
+      if (fabBtn) {
+        e.stopPropagation();
+        const pid = fabBtn.getAttribute('data-part-id');
+        const flab = fabBtn.getAttribute('data-fab-label');
+        insertIntoQuery(pid + ' at the ' + flab + ' fab');
+        closeCatalogModal();
+        return;
+      }
+
+      // Click on the part ID pill = insert just the part, close, done
+      const partPill = target.closest ? target.closest('[data-action="insert-part"]') : null;
+      if (partPill) {
+        e.stopPropagation();
+        const row = partPill.closest('.catalog-row');
+        const pid = row && row.getAttribute('data-part-id');
+        if (pid) {
+          insertIntoQuery(pid);
+          closeCatalogModal();
+        }
+        return;
+      }
+
+      // Click anywhere else on the row head = toggle expansion
+      const rowHead = target.closest ? target.closest('.catalog-row-head') : null;
+      if (rowHead) {
+        const row = rowHead.closest('.catalog-row');
+        if (row) toggleCatalogRow(row);
+      }
+    });
+  }
+
+  // Pre-fetch the gold-set catalog and inventory quietly so the first
+  // open of either modal is instant.
   loadCatalog();
+  loadInventory();
 
   // Keyboard shortcuts
   document.addEventListener('keydown', function (e) {
     if (e.key === 'Escape') {
-      if ($('browse-backdrop').classList.contains('open')) {
+      if ($('catalog-backdrop').classList.contains('open')) {
+        closeCatalogModal();
+      } else if ($('browse-backdrop').classList.contains('open')) {
         closeBrowseModal();
       } else if ($('modal-backdrop').classList.contains('open')) {
         closeModal();
       }
     }
-    if (e.key === '?' && document.activeElement !== queryInput) {
+    if (
+      e.key === '?' &&
+      document.activeElement !== queryInput &&
+      document.activeElement !== $('catalog-search-input')
+    ) {
       openModal();
     }
   });

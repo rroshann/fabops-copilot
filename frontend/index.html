@@ -53,7 +53,8 @@
             <button class="chip" data-driver="policy" data-query="Why is part 10279876 at risk of stocking out at the Taiwan fab, and what should I do?">policy drift &middot; 10279876</button>
             <button class="chip" data-driver="supply" data-query="Forecast the stockout risk for part 11527537 at the Santa Clara fab. Is the supplier the issue?">supply risk &middot; 11527537</button>
             <button class="chip" data-driver="demand" data-query="Diagnose the stockout risk for part 15317213 at the Dresden fab. What's driving demand?">demand shift &middot; 15317213</button>
-            <a class="browse-link" id="link-browse">+ browse all 18 parts</a>
+            <a class="browse-link" id="link-browse">+ browse 18 drift cases</a>
+            <a class="browse-link" id="link-catalog">catalog &middot; 200 parts &times; 9 fabs</a>
           </div>
           <button class="run-btn" id="ask-btn">Run agent &rarr;</button>
         </div>
@@ -137,6 +138,46 @@
     </div>
 
   </main>
+
+  <!-- ============ FULL CATALOG MODAL ============ -->
+  <div class="modal-backdrop" id="catalog-backdrop">
+    <div class="modal modal-wide" role="dialog" aria-modal="true" aria-labelledby="catalog-title">
+      <div class="modal-head">
+        <div>
+          <div class="modal-head-eyebrow">// FABOPS COPILOT</div>
+          <div class="modal-head-title" id="catalog-title">Parts catalog</div>
+        </div>
+        <button class="modal-close" id="catalog-close" aria-label="Close">&times;</button>
+      </div>
+
+      <div class="catalog-toolbar">
+        <div class="catalog-search">
+          <input
+            type="text"
+            id="catalog-search-input"
+            class="catalog-search-input"
+            placeholder="Search by part ID (e.g. 102 or 115)..."
+            autocomplete="off"
+            spellcheck="false">
+        </div>
+        <label class="catalog-toggle">
+          <input type="checkbox" id="catalog-drift-only">
+          <span>drift only</span>
+        </label>
+        <div class="catalog-count" id="catalog-count">&ndash;</div>
+      </div>
+
+      <div class="catalog-body" id="catalog-body">
+        <!-- Rows rendered by JS from frontend/inventory.json -->
+      </div>
+
+      <div class="catalog-footer">
+        <span>click a <strong>part ID</strong> to insert it into your query</span>
+        <span>&middot;</span>
+        <span>click a <strong>fab</strong> to insert both</span>
+      </div>
+    </div>
+  </div>
 
   <!-- ============ BROWSE PARTS MODAL ============ -->
   <div class="modal-backdrop" id="browse-backdrop">
