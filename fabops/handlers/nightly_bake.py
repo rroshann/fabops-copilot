@@ -4,10 +4,19 @@ Computes Croston/SBA/TSB forecasts for all parts, writes to fabops_forecasts
 and pre-baked demand stats to fabops_policies (resolves policy/demand
 circular dep). Imports statsforecast ONLY here — never at runtime.
 
+Policy-drift gold-set parts are EXCLUDED from the policy table write so
+that the staleness injected by scripts/inject_gold_drift.py persists
+across nightly bake runs. Without this exclusion, last_updated gets
+refreshed to today for all 200 parts, which resets staleness_days to 0
+and causes the agent to misdiagnose policy-drift cases as supply or
+demand.
+
 Spec Section 9.2.
 """
+import json
 import os
 from datetime import datetime
+from pathlib import Path
 
 try:
     from statsforecast import StatsForecast
@@ -142,8 +151,26 @@ def handler(event, context):
 
     print(f"[nightly_bake] writing {len(forecast_items)} forecasts to {TABLE_FORECASTS}")
     batch_write(TABLE_FORECASTS, forecast_items)
-    print(f"[nightly_bake] writing {len(policy_items)} policies to {TABLE_POLICIES}")
-    batch_write(TABLE_POLICIES, policy_items)
+
+    # Exclude gold-set policy-drift parts from the policy write so their
+    # injected staleness (last_updated = 2025-03-01, staleness_days = 409)
+    # survives the nightly bake. Without this, last_updated would be
+    # refreshed to today and staleness_days would recompute to 0.
+    protected_parts = set()
+    gold_path = Path(__file__).parent.parent.parent / "evals" / "gold_set.json"
+    if gold_path.exists():
+        try:
+            gold_cases = json.loads(gold_path.read_text())
+            for c in gold_cases:
+                if c.get("ground_truth_driver") == "policy":
+                    protected_parts.add(str(c["part_id"]))
+            print(f"[nightly_bake] protecting {len(protected_parts)} policy-drift gold parts from policy overwrite")
+        except Exception as e:
+            print(f"[nightly_bake] could not load gold set for protection: {e}")
+
+    safe_policy_items = [p for p in policy_items if p["part_id"] not in protected_parts]
+    print(f"[nightly_bake] writing {len(safe_policy_items)} policies to {TABLE_POLICIES} (skipped {len(policy_items) - len(safe_policy_items)} protected)")
+    batch_write(TABLE_POLICIES, safe_policy_items)
 
     # Upload MLflow tracking DB to S3 (non-fatal if bucket not yet available)
     try:
