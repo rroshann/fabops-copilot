@@ -29,6 +29,12 @@ def handler(event, context):
     if not query:
         return _response(400, {"error": "query field required", "request_id": request_id})
 
+    # Fast-path warmup sentinel. The frontend fires this on page load to
+    # warm the Lambda container. Returning 200 immediately tells the
+    # polling loop the container is alive without burning a full agent run.
+    if query == "__warmup__":
+        return _response(200, {"status": "warm", "request_id": request_id})
+
     # Single writer for this request so step_n increments monotonically,
     # preventing the error row from overwriting the entry row in DynamoDB.
     audit = AuditWriter(request_id)

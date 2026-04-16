@@ -4,7 +4,7 @@
 
 Final project for **DS 5730-01 Context-Augmented Gen AI Apps** (Vanderbilt University, Spring 2026).
 
-![Python](https://img.shields.io/badge/python-3.9-blue.svg)
+![Python](https://img.shields.io/badge/python-3.11%20local%20%7C%203.9%20Lambda-blue.svg)
 ![AWS](https://img.shields.io/badge/AWS-Lambda%20%7C%20DynamoDB%20%7C%20API%20Gateway-orange.svg)
 ![Tests](https://img.shields.io/badge/tests-41%2F41%20passing-brightgreen.svg)
 
@@ -51,7 +51,7 @@ The fastest way to understand this project is to open the [primary demo](https:/
 2. **"+ browse 18 drift cases"** in the main panel. It opens a curated catalog of the 18 real gold-set drift cases (6 policy drift, 9 supply risk, 3 demand shift). Click any row and it runs the agent against that part immediately.
 3. **"catalog · 200 parts × 9 fabs"** next to it. The full 200-part inventory, searchable by prefix, each row expandable to show its 9 fabs with live `on_hand` numbers. Click a part ID or a specific fab to insert it into your query and compose your own question.
 
-During execution you will see a live 9-node panel animate through the graph as the agent runs. First cold call after a long idle is about 19 seconds. Warm calls land in 10 to 17 seconds, dominated by the Gemini Flash diagnose call.
+During execution you will see a live 9-node panel animate through the graph as the agent runs. First cold call after a long idle is about 19 seconds. Warm calls typically land in 10 to 25 seconds, dominated by the Gemini Flash diagnose call.
 
 ## Architecture
 
@@ -144,10 +144,10 @@ The 7 tool functions live in `fabops/tools/` as plain Python. The runtime Lambda
 
 | Metric | Value | Notes |
 |---|---|---|
-| Gold-set pass rate | **15/18 (83.3%)** | Last Pro run. Gemini 2.5 Pro for diagnose, Claude Haiku 4.5 as judge. |
+| Gold-set pass rate | **15/18 (83.3%)** | Pro run on 2026-04-14 (commit `2c7327b`). Gemini 2.5 Pro for diagnose, Claude Haiku 4.5 as judge. |
 | Gold-set pass rate (current prod) | Untested, estimated 70 to 75% | Gemini 2.5 Flash. Tuned for demo latency. |
 | Cold start latency | ~19 s | After the EDGAR prebake fix. Was 50 to 55 s. |
-| Warm call latency | 10 to 17 s | Dominated by the Gemini Flash diagnose call. |
+| Warm call latency | 10 to 25 s | Dominated by Gemini Flash diagnose call; variance depends on LLM response time. |
 | Unit tests | 41/41 passing | `tests/` covers tools, nodes, state schema, handlers. |
 | Lambda zip size | 42 MB | Includes 17 MB baked EDGAR chunks. |
 | EDGAR corpus | 1,079 chunks | Real 10-K, 10-Q, 8-K from Applied Materials. |

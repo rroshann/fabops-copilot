@@ -257,8 +257,21 @@ function markAnimationError(message) {
 
 // ---------- Run ----------
 
+function shakeInput() {
+  const textarea = $('query-input');
+  if (!textarea) return;
+  textarea.style.borderColor = 'var(--accent-red)';
+  textarea.setAttribute('placeholder', 'Type a question about a part, or click an example chip below...');
+  setTimeout(function () {
+    textarea.style.borderColor = '';
+  }, 1200);
+}
+
 function runQuery(query) {
-  if (!query || !query.trim()) return;
+  if (!query || !query.trim()) {
+    shakeInput();
+    return;
+  }
   query = query.trim();
 
   // cancel any in-flight request
@@ -868,43 +881,26 @@ function toggleCatalogRow(row) {
 }
 
 function insertIntoQuery(text) {
-  const input = $('query-input');
-  const current = input.value;
-  if (!current.trim()) {
-    input.value = text;
-  } else if (current.indexOf(text) !== -1) {
-    // already there, do nothing
-  } else {
-    // insert at cursor position if we have selection, otherwise append
-    const start = input.selectionStart;
-    const end = input.selectionEnd;
-    if (typeof start === 'number' && typeof end === 'number') {
-      const before = current.slice(0, start);
-      const after = current.slice(end);
-      const needsSpaceBefore = before.length > 0 && !before.endsWith(' ');
-      const needsSpaceAfter = after.length > 0 && !after.startsWith(' ');
-      input.value =
-        before +
-        (needsSpaceBefore ? ' ' : '') +
-        text +
-        (needsSpaceAfter ? ' ' : '') +
-        after;
-      const newPos = before.length + (needsSpaceBefore ? 1 : 0) + text.length;
-      input.selectionStart = input.selectionEnd = newPos;
-    } else {
-      input.value = current + ' ' + text;
-    }
-  }
+  var input = $('query-input');
+  // Clear first so repeated catalog picks don't concatenate.
+  input.value = text;
   input.focus();
 }
 
 function openCatalogModal() {
+  // Reset filters to defaults so returning visitors don't see stale state.
+  catalogSearchTerm = '';
+  catalogDriftOnly = false;
+  const searchEl = $('catalog-search-input');
+  const driftToggle = $('catalog-drift-only');
+  if (searchEl) searchEl.value = '';
+  if (driftToggle) driftToggle.checked = false;
+
   $('catalog-backdrop').classList.add('open');
-  const input = $('catalog-search-input');
   loadInventory().then(function () {
     renderCatalogBody();
-    if (input) {
-      setTimeout(function () { input.focus(); }, 50);
+    if (searchEl) {
+      setTimeout(function () { searchEl.focus(); }, 50);
     }
   });
 }

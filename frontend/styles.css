@@ -196,12 +196,13 @@ button { font-family: inherit; cursor: pointer; }
   padding: 18px;
   background: transparent;
   color: var(--fg-primary);
-  border: none;
+  border: 1px solid transparent;
   outline: none;
   resize: none;
   font-family: var(--font-mono);
   font-size: 14px;
   line-height: 1.55;
+  transition: border-color 200ms ease;
 }
 .query-panel textarea::placeholder {
   color: var(--fg-faint);
