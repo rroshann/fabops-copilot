@@ -51,8 +51,20 @@ def run(part_id: str, service_level: float = 0.95, lead_time_days: float = None)
         dlt_std = cached["leadtime_demand_std"]
         last_updated = cached.get("last_updated", datetime.utcnow().isoformat())
     else:
-        # Fallback: compute crudely from carparts history
-        from fabops.data.carparts import load_carparts
+        # Fallback: compute crudely from carparts history.
+        # carparts/pandas/numpy are deliberately not bundled in the runtime
+        # Lambda zip (50 MB ceiling), so on a cache miss at runtime we must
+        # degrade gracefully rather than crash the request. In practice the
+        # nightly bake populates the policy cache for every known part, so
+        # this path should only fire on first-seen parts.
+        try:
+            from fabops.data.carparts import load_carparts
+        except ModuleNotFoundError:
+            return ToolResult(
+                ok=False,
+                error=f"policy cache miss for {part_id} and carparts/pandas unavailable at runtime",
+                latency_ms=(time.time() - t0) * 1000,
+            )
         df = load_carparts()
         part_demand = df[df["part_id"] == part_id]["demand"].to_numpy()
         if len(part_demand) == 0:

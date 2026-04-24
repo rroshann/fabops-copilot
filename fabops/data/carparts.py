@@ -3,7 +3,6 @@ import os
 from pathlib import Path
 from typing import Literal
 
-import numpy as np
 import pandas as pd
 
 # Inside the Lambda container image, /var/task is the working root and
