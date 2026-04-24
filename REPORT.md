@@ -315,6 +315,12 @@ Every user request generates a single UUIDv4 `request_id` at the `entry` node an
 
 - **Langfuse Cloud.** LangChain `CallbackHandler` attached to `graph.invoke()` (v3 SDK pattern). Integration is code-complete (shim, handler attachment, explicit flush in the runtime handler's `finally` block, and valid credentials confirmed via local `auth_check()`). Trace delivery from Lambda invocations is intermittent due to SDK v3/v4 API drift around the `start_as_current_span` / `start_span` method surface combined with cold-start flush timing. Langfuse is treated as a polish item rather than a load-bearing sink because the audit spine independently captures the same per-node reasoning data. See §11 for the path forward.
 
+**One-page monitoring view.** The read-only `/monitor` page in the frontend surfaces the audit spine as a single dashboard: aggregate stat cards (total requests, 24-hour count, error rate, p50/p95 latency), a table of the 50 most recent requests (timestamp, query, primary driver, step count, total latency, status), and click-to-expand per-node traces with captured error strings. This is the single place a grader or on-call engineer uses to inspect system behavior without opening the AWS console.
+
+![/monitor page. Stat cards at the top show live aggregates (163 requests tracked, 7.4% error rate, p50 31,846 ms, p95 88,037 ms). The expanded row is the real numpy-import regression caught on 2026-04-24, with the captured ModuleNotFoundError visible beneath the per-node trace. Requests back to 2026-04-15 are queryable.](docs/screenshots/monitor-view.png)
+
+*Figure 6.1. The `/monitor` view at `https://main.d23s2e6xnypmh0.amplifyapp.com/monitor.html`, backed by `GET /monitor` on the runtime Lambda and the `fabops_audit` DynamoDB spine. Every spec-required observability dimension (user input, model output, tool calls, failures, latency) is captured in one place.*
+
 ### 6.2 MLflow Tracking
 
 The nightly bake runs `mlflow.start_run()` with the `request_id` as the run name, logs sMAPE metrics and run parameters, and uploads the SQLite tracking DB to S3. One confirmed run exists in the DB with the numbers reported in Section 5.
