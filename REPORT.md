@@ -252,29 +252,33 @@ What this system is **not**: a chat wrapper around a single LLM call, a fixed se
 
 ### 5.1 Metrics Table
 
-The spec asks for at least one quality metric and one operational metric. This system tracks five, grouped below.
+The spec asks for at least one quality metric and one operational metric. This system tracks seven, grouped below. Each row links to why the number matters, not just what it is.
 
 **Quality metrics:**
 
-| # | Metric | Definition | Value |
+| # | Metric | Definition · why it matters | Value |
 |---|---|---|---|
-| 1a | **Forecast sMAPE (mean)** | Symmetric Mean Absolute Percentage Error, non-zero holdout months, Croston/SBA, 200 parts, 12-month horizon | **1.759** (MLflow run `459e80ed`) |
-| 1b | **Forecast sMAPE (p50 / p90)** | Median and 90th-percentile sMAPE across parts | **1.819 / 2.000** (same run) |
-| 2 | **Agent task-success rate** | Cross-family Claude Haiku 4.5 judge score (1–5 rubric) on the 18-case gold set; pass iff all three rubric dimensions ≥ 4; target ≥ 80% | **15/18 = 83.3%** (pass). Per-class: policy 6/6 (100%), demand 3/3 (100%), supply 6/9 (67%) |
-| 3 | **Trajectory tool-selection accuracy** | Expected 9-node sequence: `entry → check_policy → check_demand → check_supply → ground_in_disclosures → diagnose → prescribe → verify → finalize`. Measured from the `fabops_audit` spine across the 15 passing gold runs | **100%** on passing runs. Every pass executed all 9 nodes in order, verified via a per-request audit query |
+| 1a | **Forecast sMAPE (mean)** | Symmetric Mean Absolute Percentage Error, non-zero holdout months, Croston/SBA, 200 parts, 12-month horizon. *Why:* baseline accuracy check against the Hyndman benchmark; a regression here means the nightly bake drifted | **1.759** (MLflow run `459e80ed`) |
+| 1b | **Forecast sMAPE (p50 / p90)** | Median and 90th-percentile sMAPE across parts | **1.819 / 2.000** |
+| 2 | **P90 interval coverage** | Fraction of `(part, holdout_month)` pairs where realized demand ≤ Croston/SBA p90 envelope. 2674 parts × 12 holdout months on real carparts data, train on months 1–39, test on 40–51. *Why:* this is **the** load-bearing accuracy signal for a stockout agent. Stockout-date estimates are only as trustworthy as the P90 band. Target = 0.90 | **0.9088** (29 163 / 32 088 pairs covered). Per-part: mean 0.9088, median 1.0, p10 0.75, p90 1.0 |
+| 3 | **Agent task-success rate** | Cross-family Claude Haiku 4.5 judge score (1–5 rubric) on the 18-case gold set; pass iff all three rubric dimensions ≥ 4; target ≥ 80%. *Why:* the grader-facing number. Captures diagnosis correctness + citation faithfulness + action appropriateness in a single score | **15/18 = 83.3%** (pass). Per-class: policy 6/6 (100%), demand 3/3 (100%), supply 6/9 (67%) |
+| 4 | **Trajectory tool-selection accuracy** | Expected 9-node sequence: `entry → check_policy → check_demand → check_supply → ground_in_disclosures → diagnose → prescribe → verify → finalize`. Measured from the `fabops_audit` spine across the 15 passing gold runs. *Why:* detects silent graph regressions where the agent completes but takes a wrong path | **100%** on passing runs |
 
 **Operational metrics:**
 
-| # | Metric | Definition | Value |
+| # | Metric | Definition · why it matters | Value |
 |---|---|---|---|
-| 4 | **End-to-end request latency** | Wall-clock seconds from API Gateway request to JSON response, measured against the deployed Lambda. Cold = first invocation after deploy or long idle; warm = pre-warmed via the dashboard's `__warmup__` ping | **Cold ~50 s, warm 10–17 s** (median 13 s on the 18-case gold run). Cold-start budget dominated by Lambda init + EDGAR chunk asset gunzip; warm latency dominated by two Gemini round-trips (`diagnose` and `verify`) |
-| 5 | **Cost per request** | Gemini API spend per agent invocation (Flash for routing + Flash for `diagnose` + Flash for `verify`) plus DynamoDB read/write, computed from the 18-case gold run. Pro was demoted to Flash mid-build for latency reasons; see §8.3 | **~$0.002 per request** on runtime. Evaluation judge cost (separate) was $0.0354 across 18 cases ($0.00197/case) via Claude Haiku 4.5 |
+| 5 | **End-to-end request latency** | Wall-clock seconds from API Gateway request to JSON response. *Why:* API Gateway HTTP API has a 30-second hard timeout; anything slower returns 504 to the user's browser even though the Lambda is still running. Latency is not vanity, it is a correctness boundary | **Gold-run (18 warm requests): median 13 s, range 10–17 s.** **Live production aggregate from `/monitor` (163 requests, mixed cold+warm): p50 31.8 s, p95 88 s.** The gap is the warm-only gold run vs. the live aggregate that includes cold starts and `__warmup__` pings. Cold starts ~50 s; warm dominated by two Gemini round-trips (`diagnose` and `verify`) |
+| 6 | **Cost per request** | Gemini API spend per agent invocation (Flash for routing + Flash for `diagnose` + Flash for `verify`) plus DynamoDB read/write. *Why:* the $/request floor determines what a scaled deployment would cost. Every agent budget decision (Pro vs Flash, verify-on vs verify-off, DSPy compile vs not) is justified or rejected against this number | **~$0.002 per request** on runtime. Evaluation judge cost (separate) was $0.0354 across 18 cases ($0.00197/case) via Claude Haiku 4.5 |
+| 7 | **Error rate** | Fraction of requests where any node emitted a `runtime_error` row to the audit spine. *Why:* the canonical "is the deployed agent healthy right now" metric; caught the numpy import regression of 2026-04-24 in under a minute | **7.4%** over 163 tracked production requests (live on `/monitor`). Dominated by historical failures from pre-fix deployments; the live error rate on the current deploy is 0% across verification runs |
 
 The reflection-recovery rate (verify-triggers-retry path) is implemented but did not fire on the gold run because Gemini's first-pass diagnoses passed verification in all 18 cases. It is reported as instrumentation, not as a metric, until an adversarial set exercises it.
 
 **Real numbers source:**
 - sMAPE metrics: MLflow run `459e80ed1f344df3a78a9924a94a0287`, parameters `model=croston_sba`, `n_parts=200`, `horizon_months=12`, retrieved from `s3://fabops-copilot-artifacts/mlflow.db`.
+- P90 coverage: `scripts/compute_p90_coverage.py`, full results at `evals/results/p90_coverage.json`. Reproducible with `PYTHONPATH=. python scripts/compute_p90_coverage.py`.
 - Task-success metric: `scripts/run_judge.py --set gold` run on 2026-04-14, total Anthropic cost $0.0354, cache at `evals/results/judge_cache.json`, full results at `evals/results/gold_run.json`.
+- Latency, cost, error rate: live aggregates from `GET /monitor` on the deployed API Gateway, backed by the `fabops_audit` DynamoDB spine. Reproducible with `curl https://3ph4o9amg4.execute-api.us-east-1.amazonaws.com/monitor`.
 
 **Methodology note. Gold set derivation:** the original 18-case gold set was hand-authored with ground-truth labels that reflected intent rather than the actual DynamoDB state. An audit-driven debug pass revealed that all 18 pre-baked policies had `staleness_days=0` (freshly computed by the nightly bake), so cases labeled as "policy-driven" were unfalsifiable by the agent. The gold set was subsequently regenerated via `scripts/regenerate_gold_set.py`, which reads `fabops_inventory`, `fabops_policies`, and `fabops_suppliers` for each part and derives `ground_truth_driver` deterministically from a fixed hierarchy (policy > supply > demand > healthy). `scripts/inject_gold_drift.py` injects controlled state into the three tables so the gold set has real 6/9/3 class balance (md5-based part→supplier hash collisions produced 9 supply cases instead of the intended 6). This approach eliminates label/state drift between synthetic data and eval truth. A category of bug the debug pass showed to be load-bearing for realistic eval metrics.
 
@@ -286,7 +290,9 @@ The reflection-recovery rate (verify-triggers-retry path) is implemented but did
 
 ### 5.3 Forecast Accuracy Context
 
-An sMAPE of 1.759 on carparts intermittent series is in the expected range for Croston/SBA. (Note: sMAPE as defined here is bounded in [0, 2], so a p90 of 2.000 indicates ~10% of parts hit the theoretical maximum, which is expected on zero-heavy intermittent series where the symmetric denominator collapses.) The academic literature reports Croston/SBA sMAPE in the 1.5–2.0 range on carparts depending on holdout period and model variant. The more load-bearing accuracy signal for a stockout-risk system is P90 interval coverage: whether the P90 forecast interval actually contains realized demand 90% of the time. This metric is tracked in the nightly bake but not yet logged as a named MLflow metric; it is a gap addressed in future work.
+An sMAPE of 1.759 on carparts intermittent series is in the expected range for Croston/SBA. (Note: sMAPE as defined here is bounded in [0, 2], so a p90 of 2.000 indicates ~10% of parts hit the theoretical maximum, which is expected on zero-heavy intermittent series where the symmetric denominator collapses.) The academic literature reports Croston/SBA sMAPE in the 1.5–2.0 range on carparts depending on holdout period and model variant.
+
+The more load-bearing accuracy signal for a stockout-risk system is **P90 interval coverage**: does the P90 forecast envelope actually contain realized demand 90% of the time? Computed retrospectively via `scripts/compute_p90_coverage.py` on the full 2674-part carparts benchmark, training on months 1–39 and testing on the held-out months 40–51, the measured coverage is **0.9088** across 32 088 evaluation pairs, essentially at the 0.90 target. The median per-part coverage is 1.0 (the P90 envelope contains every realized month for half the parts, expected on zero-heavy series) and the p10 is 0.75 (the worst-calibrated decile still has three out of four months covered). The model is well-calibrated; this is what makes the agent's `p90_stockout_date` claim defensible to a planner rather than a guess with a prediction band attached.
 
 ---
 
@@ -425,7 +431,7 @@ The two-face pattern is a deliberate answer to the common anti-pattern of "a Lan
 
 **Model improvements:**
 - Expand nightly bake from 200 to all 2674 parts and report full-corpus sMAPE.
-- Add P90 interval coverage as a named MLflow metric.
+- Persist the P90 interval coverage number (already computed, 0.9088 at §5.1 and §5.3) as a named MLflow metric emitted by the nightly bake so it shows up in the run history alongside sMAPE.
 - Implement TSB (Teunter-Syntetos-Babai) for the lumpy-demand quadrant alongside Croston/SBA.
 - Implement the Census M3 `shipments`/`inventories`/`orders` series.
 
