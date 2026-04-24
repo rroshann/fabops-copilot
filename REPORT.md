@@ -286,7 +286,7 @@ The reflection-recovery rate (verify-triggers-retry path) is implemented but did
 
 ### 5.2 DSPy Planner Optimization
 
-`scripts/dspy_compile_planner.py` implements `BootstrapFewShot` compilation of the entry/planner prompt against the 18-question gold set using `dspy.LM("gemini/gemini-2.5-flash", ...)` (DSPy 3.x API surface; `dspy.Google` was removed in DSPy 3.x). Compilation ran successfully against the live `GEMINI_API_KEY` and produced a compiled program serialized via `dspy.Module.dump_state()` to `evals/dspy/compiled_planner.json`. The compiled program is not yet wired into the runtime graph; the wiring is a one-line swap in `fabops/agent/nodes.py:entry_node` and is held back from production until the compiled prompt is regression-tested against the full gold set under the same judge harness used for §5.1. Reporting the before/after delta is the next eval-track work item.
+`scripts/dspy_compile_planner.py` implements `BootstrapFewShot` compilation of the entry/planner prompt against the 18-case gold set using `dspy.LM("gemini/gemini-2.5-flash", ...)` (DSPy 3.x API surface; `dspy.Google` was removed in DSPy 3.x). Compilation ran successfully against the live `GEMINI_API_KEY` and produced a compiled program serialized via `dspy.Module.dump_state()` to `evals/dspy/compiled_planner.json`. Runtime wiring and the measured before/after delta are tracked as open work items in §11.
 
 ### 5.3 Forecast Accuracy Context
 
@@ -329,7 +329,7 @@ A non-obvious fix was required to make MLflow work inside the Lambda container: 
 
 ### 6.3 CI Gate
 
-`.github/workflows/eval-ci.yml` runs on every PR to `main`: executes the 46-test pytest suite, then runs the 18-case gold eval set against the deployed agent endpoint via `scripts/run_judge.py --set gold` and uploads the JSON results as a workflow artifact. Repository secrets `FABOPS_API_URL` and `ANTHROPIC_API_KEY` are configured. The gate currently reports results without enforcing a regression threshold; tightening it to fail on a >5pp drop from the baseline is a one-line change in the workflow once a stable baseline run is published.
+`.github/workflows/eval-ci.yml` runs on every PR to `main`: executes the 46-test pytest suite, runs the 18-case gold eval set against the deployed agent endpoint via `scripts/run_judge.py --set gold`, and uploads the JSON results as a workflow artifact. A dedicated *regression-threshold* step then parses `evals/results/gold_run.json` and **fails the PR** if task-success rate drops more than 5 pp below the published baseline (83.3%). Repository secrets `FABOPS_API_URL` and `ANTHROPIC_API_KEY` are configured. This makes the CI gate a real quality guardrail, not just a reporting hook: a prompt change or model swap that silently tanks gold-set performance cannot land on `main`.
 
 ### 6.4 Bug-Catching Methodology Note
 
@@ -452,7 +452,9 @@ The two-face pattern is a deliberate answer to the common anti-pattern of "a Lan
 - Proactive alerting via EventBridge rule triggering on policy staleness threshold.
 
 **Evaluation:**
+- Wire the compiled DSPy planner (`evals/dspy/compiled_planner.json`, see §5.2) into `fabops/agent/nodes.py:entry_node` and re-run the 18-case gold set under the same judge harness to publish the measured before/after delta. This is a one-line swap plus a judge-harness invocation; the highest-leverage open work item.
 - Expand the gold set from 18 to 30+ cases with deeper supply-class coverage.
+- Re-run the gold set under Gemini 2.5 Pro (restored on `diagnose`/`verify`) to measure the Flash-demotion quality cost documented in §8.3.
 - Run a 50-question adversarial set; publish a tool-selection confusion matrix.
 - Investigate DSPy MIPROv2 vs. BootstrapFewShot accuracy delta (MIPROv2 is a pre-authorized cut due to Gemini quota at the time of compilation).
 
