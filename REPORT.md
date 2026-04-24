@@ -1,14 +1,18 @@
-# FabOps Copilot: Technical Report
-
-**Course:** DS 5730-01 Context-Augmented Gen AI Apps, Vanderbilt University, Spring 2026  
-**Author:** Roshan Siddartha Sivakumar  
-**Date:** 2026-04-24  
-**Repository:** `main` branch  
-**Live demo (primary, HTTPS):** https://main.d23s2e6xnypmh0.amplifyapp.com  
-**Live demo (secondary, raw S3):** http://fabops-copilot-frontend.s3-website-us-east-1.amazonaws.com  
-**API endpoint:** https://3ph4o9amg4.execute-api.us-east-1.amazonaws.com/getChatResponse
-
 ---
+title: "FabOps Copilot: Technical Report"
+subtitle: "DS 5730-01 Context-Augmented Gen AI Apps · Vanderbilt University, Spring 2026"
+author: "Roshan Siddartha Sivakumar"
+date: "2026-04-24"
+---
+
+\newpage
+
+## Live demo and source
+
+- **Primary (HTTPS via Amplify):** https://main.d23s2e6xnypmh0.amplifyapp.com
+- **Secondary (raw S3 static site):** http://fabops-copilot-frontend.s3-website-us-east-1.amazonaws.com
+- **API endpoint:** https://3ph4o9amg4.execute-api.us-east-1.amazonaws.com/getChatResponse
+- **Repository:** `main` branch on GitHub
 
 ## Spec cross-reference
 
