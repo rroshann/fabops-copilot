@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FabOps Copilot, monitoring</title>
+  <meta name="description" content="Read-only observability view over the FabOps Copilot audit spine. Every request, every node, every failure, one place.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="config.js"></script>
+  <style>
+    /* Monitor-specific styling. Kept local so the main dashboard styles.css stays untouched. */
+    .monitor-main { max-width: 1280px; margin: 0 auto; padding: 0 40px 80px; }
+    .mon-hero { padding: 48px 0 24px; }
+    .mon-eyebrow { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--muted, #60646c); letter-spacing: 0.1em; }
+    .mon-title { font-size: 32px; font-weight: 600; margin: 6px 0 8px; }
+    .mon-sub { color: var(--muted, #60646c); font-size: 14px; }
+    .stat-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin: 24px 0 32px; }
+    .stat-card { background: var(--panel, #0d0f14); border: 1px solid var(--border, #1d2230); border-radius: 10px; padding: 16px 18px; }
+    .stat-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--muted, #60646c); letter-spacing: 0.1em; }
+    .stat-value { font-size: 22px; font-weight: 600; margin-top: 6px; font-variant-numeric: tabular-nums; }
+    .stat-unit { font-size: 12px; color: var(--muted, #60646c); margin-left: 4px; font-weight: 400; }
+
+    .req-table { width: 100%; border-collapse: collapse; background: var(--panel, #0d0f14); border: 1px solid var(--border, #1d2230); border-radius: 10px; overflow: hidden; }
+    .req-table thead th { text-align: left; padding: 12px 14px; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: var(--muted, #60646c); background: var(--panel-alt, #10131a); border-bottom: 1px solid var(--border, #1d2230); }
+    .req-table tbody tr { border-bottom: 1px solid var(--border, #1d2230); cursor: pointer; transition: background 120ms; }
+    .req-table tbody tr:hover { background: var(--panel-alt, #10131a); }
+    .req-table tbody tr.expanded { background: var(--panel-alt, #10131a); }
+    .req-table td { padding: 14px; font-size: 13px; vertical-align: top; }
+    .req-table td.mono { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+    .req-ok { color: #3ddc97; font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+    .req-err { color: #ff6b6b; font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+    .driver-pill { display: inline-block; padding: 2px 10px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.05em; }
+    .driver-policy  { background: rgba(255, 193, 7, 0.15); color: #ffc107; }
+    .driver-supply  { background: rgba(255, 107, 107, 0.15); color: #ff6b6b; }
+    .driver-demand  { background: rgba(61, 220, 151, 0.15); color: #3ddc97; }
+    .driver-none    { background: rgba(96, 100, 108, 0.2); color: var(--muted, #60646c); }
+    .req-query { max-width: 480px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .trace-panel { background: var(--panel-alt, #10131a); padding: 18px 20px 22px; }
+    .trace-grid { display: grid; grid-template-columns: 40px 1fr 100px 80px; gap: 8px 16px; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+    .trace-grid > div { padding: 6px 0; border-bottom: 1px dashed var(--border, #1d2230); }
+    .trace-node-ok  { color: #3ddc97; }
+    .trace-node-err { color: #ff6b6b; }
+    .trace-error-blob { margin-top: 10px; padding: 10px 12px; background: rgba(255, 107, 107, 0.1); border-left: 2px solid #ff6b6b; color: #ff6b6b; font-family: 'JetBrains Mono', monospace; font-size: 12px; white-space: pre-wrap; }
+
+    .refresh-row { display: flex; align-items: center; justify-content: space-between; margin: 24px 0 12px; }
+    .refresh-btn { background: transparent; border: 1px solid var(--border, #1d2230); color: var(--text, #e6e8ee); padding: 8px 16px; border-radius: 6px; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.05em; cursor: pointer; transition: border-color 120ms; }
+    .refresh-btn:hover { border-color: var(--accent, #8ab4ff); }
+    .refresh-meta { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--muted, #60646c); }
+
+    .empty { padding: 60px 20px; text-align: center; color: var(--muted, #60646c); }
+    .loading { padding: 20px; text-align: center; color: var(--muted, #60646c); font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+  </style>
+</head>
+<body>
+
+  <nav class="nav">
+    <div class="nav-left">
+      <div class="nav-status">
+        <div class="led pulse"></div>
+        <div class="nav-status-label">MONITORING VIEW</div>
+      </div>
+      <div class="nav-divider"></div>
+      <div class="nav-meta">us-east-1 &middot; fabops_audit spine</div>
+    </div>
+    <div class="nav-links">
+      <a href="index.html">&larr; back to agent</a>
+      <a href="https://github.com/rroshann/fabops-copilot/blob/main/REPORT.md" target="_blank" rel="noopener">architecture</a>
+      <a href="https://github.com/rroshann/fabops-copilot" target="_blank" rel="noopener">github</a>
+    </div>
+  </nav>
+
+  <main class="monitor-main">
+    <header class="mon-hero">
+      <div class="mon-eyebrow">// OBSERVABILITY</div>
+      <h1 class="mon-title">Every request, every node, every failure.</h1>
+      <div class="mon-sub">Read-only view over the <code>fabops_audit</code> DynamoDB spine. Captures user input, model output, tool calls, errors, and per-node latency. One <code>request_id</code> join reconstructs the full trace.</div>
+    </header>
+
+    <section class="stat-row" id="stat-row">
+      <div class="stat-card"><div class="stat-label">REQUESTS TRACKED</div><div class="stat-value" id="stat-total">&mdash;</div></div>
+      <div class="stat-card"><div class="stat-label">LAST 24 HOURS</div><div class="stat-value" id="stat-24h">&mdash;</div></div>
+      <div class="stat-card"><div class="stat-label">ERROR RATE</div><div class="stat-value" id="stat-err">&mdash;<span class="stat-unit">%</span></div></div>
+      <div class="stat-card"><div class="stat-label">P50 LATENCY</div><div class="stat-value" id="stat-p50">&mdash;<span class="stat-unit">ms</span></div></div>
+      <div class="stat-card"><div class="stat-label">P95 LATENCY</div><div class="stat-value" id="stat-p95">&mdash;<span class="stat-unit">ms</span></div></div>
+    </section>
+
+    <div class="refresh-row">
+      <div class="refresh-meta" id="refresh-meta">&nbsp;</div>
+      <button class="refresh-btn" id="refresh-btn">&#x21bb; refresh</button>
+    </div>
+
+    <table class="req-table">
+      <thead>
+        <tr>
+          <th style="width: 160px;">TIMESTAMP</th>
+          <th>QUERY</th>
+          <th style="width: 110px;">DRIVER</th>
+          <th style="width: 70px;">STEPS</th>
+          <th style="width: 110px;">LATENCY</th>
+          <th style="width: 70px;">STATUS</th>
+        </tr>
+      </thead>
+      <tbody id="req-tbody">
+        <tr><td colspan="6" class="loading">loading audit spine...</td></tr>
+      </tbody>
+    </table>
+  </main>
+
+<script>
+(function () {
+  // The runtime Lambda serves both routes. Strip /getChatResponse and append /monitor.
+  var MONITOR_URL = String(window.FABOPS_API || '').replace(/\/getChatResponse$/, '') + '/monitor';
+
+  function el(id) { return document.getElementById(id); }
+  function fmt(n) { return typeof n === 'number' ? n.toLocaleString() : n; }
+  function truncate(s, n) { s = s || ''; return s.length > n ? s.slice(0, n - 1) + '…' : s; }
+  function fmtTs(iso) {
+    if (!iso) return '—';
+    try {
+      var d = new Date(iso);
+      return d.toLocaleString(undefined, { month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    } catch (_) { return iso; }
+  }
+  function driverPill(driver) {
+    if (!driver) return '<span class="driver-pill driver-none">—</span>';
+    return '<span class="driver-pill driver-' + driver + '">' + driver + '</span>';
+  }
+
+  function render(data) {
+    var agg = data.aggregates || {};
+    el('stat-total').textContent = fmt(agg.total_requests || 0);
+    el('stat-24h').textContent = fmt(agg.requests_24h || 0);
+    el('stat-err').innerHTML = fmt(agg.error_rate_pct || 0) + '<span class="stat-unit">%</span>';
+    el('stat-p50').innerHTML = fmt(Math.round(agg.p50_latency_ms || 0)) + '<span class="stat-unit">ms</span>';
+    el('stat-p95').innerHTML = fmt(Math.round(agg.p95_latency_ms || 0)) + '<span class="stat-unit">ms</span>';
+
+    var tbody = el('req-tbody');
+    tbody.innerHTML = '';
+    var requests = data.requests || [];
+    if (!requests.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty">No requests in the audit spine yet. Head back to <a href="index.html">the agent</a> and submit one.</td></tr>';
+      return;
+    }
+
+    for (var i = 0; i < requests.length; i++) {
+      var r = requests[i];
+      var row = document.createElement('tr');
+      row.dataset.rid = r.request_id;
+      row.innerHTML =
+        '<td class="mono">' + fmtTs(r.ts) + '</td>' +
+        '<td class="req-query" title="' + (r.user_query || '').replace(/"/g, '&quot;') + '">' + truncate(r.user_query || '—', 90) + '</td>' +
+        '<td>' + driverPill(r.primary_driver) + '</td>' +
+        '<td class="mono">' + (r.step_count || 0) + '</td>' +
+        '<td class="mono">' + fmt(Math.round(r.total_latency_ms || 0)) + ' ms</td>' +
+        '<td>' + (r.ok ? '<span class="req-ok">OK</span>' : '<span class="req-err">ERROR</span>') + '</td>';
+      row.addEventListener('click', function (rid, rec) {
+        return function () { toggleTrace(rid, rec); };
+      }(r.request_id, r));
+      tbody.appendChild(row);
+    }
+
+    el('refresh-meta').textContent = 'showing ' + requests.length + ' / ' + (data.total_tracked || 0) + ' tracked  ·  last fetched ' + fmtTs(new Date().toISOString());
+  }
+
+  function toggleTrace(rid, rec) {
+    var existing = document.querySelector('tr.trace-row[data-parent="' + rid + '"]');
+    var parentRow = document.querySelector('tr[data-rid="' + rid + '"]');
+    if (existing) {
+      existing.remove();
+      if (parentRow) parentRow.classList.remove('expanded');
+      return;
+    }
+    if (parentRow) parentRow.classList.add('expanded');
+    var tr = document.createElement('tr');
+    tr.className = 'trace-row';
+    tr.dataset.parent = rid;
+    var td = document.createElement('td');
+    td.colSpan = 6;
+    td.className = 'trace-panel';
+    var rows = '<div class="trace-grid">' +
+      '<div style="color: var(--muted, #60646c);">STEP</div>' +
+      '<div style="color: var(--muted, #60646c);">NODE</div>' +
+      '<div style="color: var(--muted, #60646c);">LATENCY</div>' +
+      '<div style="color: var(--muted, #60646c);">STATUS</div>';
+    var trace = rec.trace || [];
+    for (var j = 0; j < trace.length; j++) {
+      var t = trace[j];
+      var cls = t.ok ? 'trace-node-ok' : 'trace-node-err';
+      rows += '<div>' + t.step_n + '</div>' +
+              '<div class="' + cls + '">' + t.node + '</div>' +
+              '<div>' + fmt(Math.round(t.latency_ms || 0)) + ' ms</div>' +
+              '<div class="' + cls + '">' + (t.ok ? 'ok' : 'err') + '</div>';
+    }
+    rows += '</div>';
+    rows += '<div style="margin-top: 12px; font-family: JetBrains Mono, monospace; font-size: 11px; color: var(--muted, #60646c);">request_id · ' + rid + '</div>';
+    if (rec.error) {
+      rows += '<div class="trace-error-blob">' + rec.error + '</div>';
+    }
+    td.innerHTML = rows;
+    tr.appendChild(td);
+    parentRow.after(tr);
+  }
+
+  function load() {
+    el('req-tbody').innerHTML = '<tr><td colspan="6" class="loading">loading audit spine...</td></tr>';
+    fetch(MONITOR_URL)
+      .then(function (r) { return r.json(); })
+      .then(render)
+      .catch(function (err) {
+        el('req-tbody').innerHTML = '<tr><td colspan="6" class="empty">failed to load: ' + err.message + '</td></tr>';
+      });
+  }
+
+  el('refresh-btn').addEventListener('click', load);
+  load();
+})();
+</script>
+</body>
+</html>

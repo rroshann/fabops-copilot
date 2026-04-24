@@ -17,6 +17,16 @@ from fabops.observability.request_id import new_request_id
 
 
 def handler(event, context):
+    # Dispatch: same Lambda backs both POST /getChatResponse (the agent) and
+    # GET /monitor (the observability dashboard). API Gateway sends the HTTP
+    # path + method in requestContext.http; branch before doing any work.
+    http_ctx = (event.get("requestContext") or {}).get("http") or {}
+    path = http_ctx.get("path") or event.get("rawPath") or ""
+    method = http_ctx.get("method", "").upper()
+    if path.endswith("/monitor") or method == "GET":
+        from fabops.handlers.monitor import handler as monitor_handler
+        return monitor_handler(event, context)
+
     request_id = new_request_id()
     body = event.get("body") or "{}"
     if isinstance(body, str):
