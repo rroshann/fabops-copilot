@@ -6,15 +6,25 @@ Final project for **DS 5730-01 Context-Augmented Gen AI Apps** (Vanderbilt Unive
 
 ![Python](https://img.shields.io/badge/python-3.11%20local%20%7C%203.9%20Lambda-blue.svg)
 ![AWS](https://img.shields.io/badge/AWS-Lambda%20%7C%20DynamoDB%20%7C%20API%20Gateway-orange.svg)
-![Tests](https://img.shields.io/badge/tests-41%2F41%20passing-brightgreen.svg)
+![Tests](https://img.shields.io/badge/tests-46%2F46%20passing-brightgreen.svg)
 
 **Live demos**
 - Primary (HTTPS via Amplify): https://main.d23s2e6xnypmh0.amplifyapp.com
 - Secondary (raw S3 static site): http://fabops-copilot-frontend.s3-website-us-east-1.amazonaws.com
+- Monitoring dashboard: https://main.d23s2e6xnypmh0.amplifyapp.com/monitor.html
 - API endpoint: `https://3ph4o9amg4.execute-api.us-east-1.amazonaws.com/getChatResponse`
 
+**Grader quick-start** (smoke-test the deployed agent from any terminal):
+```bash
+curl -sS -X POST https://3ph4o9amg4.execute-api.us-east-1.amazonaws.com/getChatResponse \
+  -H "Content-Type: application/json" \
+  -d '{"query":"Why is part 10279876 at risk of stocking out at the Taiwan fab, and what should I do?"}' \
+  --max-time 120 | python3 -m json.tool | head -40
+```
+Expect a JSON response with `request_id`, `diagnosis.primary_driver`, `p90_stockout_date`, `citations`, and an 8-entry `audit` array. Warm requests land in ~15 seconds, cold starts in ~50.
+
 **Documents**
-- [Technical report (REPORT.md)](./REPORT.md), 10 sections, 4,279 words
+- [Technical report (REPORT.md)](./REPORT.md) with per-requirement spec cross-reference
 - [Source on GitHub](https://github.com/rroshann/fabops-copilot)
 
 ---
@@ -148,7 +158,7 @@ The 7 tool functions live in `fabops/tools/` as plain Python. The runtime Lambda
 | Gold-set pass rate (current prod) | Untested, estimated 70 to 75% | Gemini 2.5 Flash. Tuned for demo latency. |
 | Cold start latency | ~19 s | After the EDGAR prebake fix. Was 50 to 55 s. |
 | Warm call latency | 10 to 25 s | Dominated by Gemini Flash diagnose call; variance depends on LLM response time. |
-| Unit tests | 41/41 passing | `tests/` covers tools, nodes, state schema, handlers. |
+| Unit tests | 46/46 passing | `tests/` covers tools, nodes, state schema, handlers, and MCP protocol compliance. |
 | Lambda zip size | 42 MB | Includes 17 MB baked EDGAR chunks. |
 | EDGAR corpus | 1,079 chunks | Real 10-K, 10-Q, 8-K from Applied Materials. |
 | Embedding dimension | 3,072 | Google `gemini-embedding-001`. |
@@ -189,7 +199,7 @@ git clone https://github.com/rroshann/fabops-copilot.git
 cd fabops-copilot
 python3.11 -m venv .venv && source .venv/bin/activate
 pip install -r requirements-runtime.txt -r requirements-dev.txt
-PYTHONPATH=$(pwd) .venv/bin/python -m pytest tests/ -q   # expect 41/41
+PYTHONPATH=$(pwd) .venv/bin/python -m pytest tests/ -q   # expect 46/46
 ```
 
 Do not use system Python 3.14: the project uses pydantic v2 wheel constraints that break on it. Stick to 3.11 locally.
@@ -255,7 +265,7 @@ scripts/
   bake_inventory.py         200-part full catalog for frontend
   deploy_runtime.sh         S3-mediated runtime Lambda deploy
   dspy_compile_planner.py   BootstrapFewShot compile
-tests/                41 unit tests
+tests/                46 unit tests (includes MCP compliance module)
 evals/                gold_set.json, rubric.md, run results, judge cache
 frontend/             Dark Fab Control Room SPA, no build step
 infra/                CloudWatch dashboard, IAM policies, table provisioning

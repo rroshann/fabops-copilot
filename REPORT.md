@@ -213,7 +213,7 @@ check_demand ---------------------------------- check_supply
 ```
 
 **Hard caps per request** (Lambda cost and latency discipline):
-- 6 Gemini Pro calls maximum (diagnose + verify + up to 2 retries each)
+- 6 Gemini Pro calls maximum (applies to `diagnose` + `verify` + up to 2 retries each; `diagnose` and `verify` are currently demoted to Gemini 2.5 Flash for latency per §8.3, so the Pro budget is dormant until a production quality run re-enables Pro for those nodes)
 - 8 total LLM calls including Gemini Flash routing
 - 15 tool calls total across the graph
 - 90-second global timeout enforced by Lambda context deadline
