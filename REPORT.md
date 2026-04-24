@@ -284,6 +284,21 @@ The reflection-recovery rate (verify-triggers-retry path) is implemented but did
 
 **Supply class is the hardest class.** All three failures on the gold run are supply cases (gold-009, -010, -012). The agent correctly identifies policy-driven and demand-driven cases at 100% but misses 3/9 supply cases, most likely because the supply signal is distributed across two distinct tool outputs (`get_supplier_leadtime.trend_30d` and `get_industry_macro_signal.ipg_series`), and the Gemini 2.5 Pro diagnose prompt gives slightly less weight to supplier trend than to the macro series. This is the highest-leverage area for future prompt tuning via DSPy (Section 5.2).
 
+#### 5.1.1 Worked example: a policy-driven pass (gold-001)
+
+One concrete trace to show how the agent reasons end-to-end. Full per-case artifacts at `evals/results/gold_run.json`.
+
+- **Input:** `"Why is part 10279876 at risk of stocking out at the Taiwan fab, and what should I do?"`
+- **Ground truth driver** (derived from live DDB state): `policy` (staleness_days=409, exceeds the 180-day threshold).
+- **Trajectory** captured from `fabops_audit`: `entry → check_policy_staleness → check_demand_drift → check_supply_drift → ground_in_disclosures → diagnose → prescribe_action → verify → finalize` (all 9 nodes, in order).
+- **LLM diagnosis:** `{"primary_driver": "policy", "confidence": 0.9, "reasoning": "The inventory policy is significantly stale at 409 days, causing its underlying lead time demand mean assumption (0.078) to be far too low to cover the current, higher demand forecast (0.127)."}`
+- **P90 stockout date:** `2026-04-14`, piped from the Croston/SBA forecast with `on_hand` from `fabops_inventory`.
+- **Recommended action:** `refresh_reorder_policy` (matches the policy-class branch in `prescribe_node`).
+- **Citations returned:** (1) Hyndman carparts forecast trace, (2) reorder-policy tool output with the stale 409-day timestamp, (3) SEC 10-Q excerpt on supply-chain risk.
+- **Judge verdict (Claude Haiku 4.5):** correctness **5/5**, citation faithfulness **4/5**, action appropriateness **5/5**, `pass=true`. Judge cost: $0.00271.
+
+The three failure cases (gold-009, -010, -012) all land in the supply class. `gold-009` is a real driver misclassification (agent said `demand`, truth was `supply`; judge correctness 2/5). `gold-010` and `gold-012` get the driver right but drop to citation 3/5 because the agent paraphrases the EDGAR excerpt instead of quoting the specific lead-time figure. The per-case JSON in `evals/results/gold_run.json` contains the full rubric reasoning for each failure.
+
 ### 5.2 DSPy Planner Optimization
 
 `scripts/dspy_compile_planner.py` implements `BootstrapFewShot` compilation of the entry/planner prompt against the 18-case gold set using `dspy.LM("gemini/gemini-2.5-flash", ...)` (DSPy 3.x API surface; `dspy.Google` was removed in DSPy 3.x). Compilation ran successfully against the live `GEMINI_API_KEY` and produced a compiled program serialized via `dspy.Module.dump_state()` to `evals/dspy/compiled_planner.json`. Runtime wiring and the measured before/after delta are tracked as open work items in §11.
