@@ -184,7 +184,7 @@ def main():
                 print(f"\n[embed] FAILED for chunk {c['chunk_id']} after retries: {e}")
                 embedded_count = len([x for x in all_chunks if "embedding" in x])
                 print(f"[embed] Progress saved at {embedded_count}/{len(all_chunks)} chunks.")
-                print(f"[embed] Resume tomorrow by re-running the same command (idempotent via --upload-only once complete)")
+                print("[embed] Resume tomorrow by re-running the same command (idempotent via --upload-only once complete)")
                 # FIX 3a: Save current progress before exiting
                 _save_chunks(all_chunks)
                 raise SystemExit(1)

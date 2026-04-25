@@ -4,7 +4,7 @@ Spec Section 14.1: cost discipline. Every call returns both the text and an
 estimated cost so the hard-switch budget logic can enforce caps.
 """
 import os
-from typing import Any, Dict, Optional, Tuple
+from typing import Optional, Tuple
 
 import google.generativeai as genai
 from anthropic import Anthropic

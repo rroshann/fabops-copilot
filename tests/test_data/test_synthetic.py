@@ -1,5 +1,5 @@
 """Test synthetic inventory, supplier, and incident generators."""
-from fabops.data.synthetic import generate_inventory, generate_suppliers, generate_incidents, AM_FABS
+from fabops.data.synthetic import generate_inventory, generate_suppliers, AM_FABS
 
 
 def test_generate_inventory_covers_all_fabs():

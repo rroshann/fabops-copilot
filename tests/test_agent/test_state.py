@@ -1,4 +1,4 @@
-from fabops.agent.state import AgentState, ToolCallRecord
+from fabops.agent.state import AgentState
 
 
 def test_agent_state_defaults():

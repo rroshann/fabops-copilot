@@ -1,5 +1,4 @@
 """Smoke test for get_industry_macro_signal (mocked)."""
-import pytest
 from unittest.mock import patch, MagicMock
 
 

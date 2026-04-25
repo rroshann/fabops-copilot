@@ -1,5 +1,4 @@
 """Test the runtime forecast_demand tool + NumPy Croston fallback."""
-import pytest
 
 from fabops.tools._croston_numpy import croston
 from fabops.tools.base import ToolResult
