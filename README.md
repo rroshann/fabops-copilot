@@ -154,8 +154,8 @@ The 7 tool functions live in `fabops/tools/` as plain Python. The runtime Lambda
 
 | Metric | Value | Notes |
 |---|---|---|
-| Gold-set pass rate | **15/18 (83.3%)** | Pro run on 2026-04-14 (commit `2c7327b`). Gemini 2.5 Pro for diagnose, Claude Haiku 4.5 as judge. |
-| Gold-set pass rate (current prod) | Untested, estimated 70 to 75% | Gemini 2.5 Flash. Tuned for demo latency. |
+| Gold-set pass rate | **15/18 (83.3%)** | Eval run on 2026-04-14 (commit `2c7327b`). Configuration: `FABOPS_ENABLE_VERIFY=1` plus Gemini 2.5 Pro for `diagnose` and `verify`. Cross-family judge was Claude Haiku 4.5. |
+| Gold-set pass rate (current prod) | Untested under current config | Production has since been switched to verify-off + Gemini 2.5 Flash for latency. Re-running the gold set under that config is the top open eval item in REPORT §11. |
 | Cold start latency | ~19 s | After the EDGAR prebake fix. Was 50 to 55 s. |
 | Warm call latency | 10 to 25 s | Dominated by Gemini Flash diagnose call; variance depends on LLM response time. |
 | Unit tests | 46/46 passing | `tests/` covers tools, nodes, state schema, handlers, and MCP protocol compliance. |
