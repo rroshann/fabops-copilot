@@ -39,17 +39,16 @@ You give it a part and a fab. For example:
 
 > "Why is part 10279876 at risk of stocking out at the Taiwan fab, and what should I do?"
 
-It runs an 8-node LangGraph state machine in production (a 9th `verify` self-critique node sits behind the `FABOPS_ENABLE_VERIFY=1` env flag) that:
+It runs an 8-node LangGraph state machine in production. (A 9th `verify` self-critique node sits behind the `FABOPS_ENABLE_VERIFY=1` env flag and is currently off; flipping it on adds a Gemini-Flash second pass plus a conditional retry edge from `verify` back to `diagnose`.) The production path:
 
-1. Pulls current inventory and the live reorder policy.
-2. Checks whether the policy is stale relative to the most recent demand history (the insight most naive pipelines skip).
-3. Checks for demand drift against the Croston SBA forecast baked by last night's job.
-4. Checks for supply drift using the supplier lead-time trend and the simulated disruption model.
+1. Parses the natural-language query into `(part_id, fab_id, intent)` at the entry node.
+2. Checks whether the reorder policy is stale relative to the most recent demand history (the insight most naive pipelines skip).
+3. Checks for demand drift against the Croston/SBA forecast baked by last night's job, and computes a P90 stockout date from current on-hand.
+4. Checks for supply drift using the supplier lead-time trend and FRED macro signals.
 5. Grounds the whole thing in real Applied Materials SEC disclosures retrieved by cosine similarity over Gemini 3072-dim embeddings.
-6. Asks Gemini 2.5 Flash to diagnose the driver as one of `policy_drift`, `supply_risk`, `demand_shift`, or `none`.
-7. Dispatches to a rule-based prescriber keyed on the diagnosed driver.
-8. Runs a verify pass.
-9. Finalizes and writes every intermediate artifact to a DynamoDB audit table.
+6. Asks Gemini 2.5 Flash to diagnose the driver as one of `policy`, `supply`, `demand`, or `none`.
+7. Dispatches to a rule-based prescriber keyed on that diagnosed driver. The `supply` branch conditionally calls `simulate_supplier_disruption` to stress-test the recommendation.
+8. Finalizes the answer with citations and writes every intermediate artifact to the `fabops_audit` DynamoDB spine.
 
 You get back a short diagnosis card, a concrete recommended action, a set of citations grouped by source, and a collapsible full audit trail showing every tool call with real timings. A typical answer reads like "Policy drift. The reorder policy for part 10279876 has not been refreshed in 409 days, so the trigger point no longer reflects current consumption. Refresh the policy before placing a new order," with inline links to the specific policy row, the forecast snapshot, and the 10-K passage that frames Applied Materials' service-parts exposure.
 

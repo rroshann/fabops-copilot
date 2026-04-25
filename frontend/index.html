@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>FabOps Copilot, service-parts stockout reasoning agent</title>
-  <meta name="description" content="9-node LangGraph agent that diagnoses why a service part is at stockout risk and recommends an action. Grounded in DynamoDB, SEC filings, and FRED.">
+  <meta name="description" content="LangGraph agent that diagnoses why a service part is at stockout risk and recommends an action. 8-node production fast path with optional verify retry. Grounded in DynamoDB, SEC filings, and FRED.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -35,7 +35,7 @@
   <header class="hero" id="hero">
     <div class="hero-eyebrow">// FABOPS COPILOT</div>
     <h1 class="hero-headline">Diagnoses why a service part is at stockout risk and recommends an action.</h1>
-    <div class="hero-subline">9-node LangGraph &middot; MCP-native &middot; grounded in DynamoDB + SEC filings + FRED</div>
+    <div class="hero-subline">8-node LangGraph (verify optional) &middot; MCP-native &middot; grounded in DynamoDB + SEC filings + FRED</div>
   </header>
 
   <main>
@@ -94,7 +94,7 @@
             <div class="card-label">DIAGNOSIS</div>
             <div class="exec-status">
               <div class="led"></div>
-              <div class="exec-status-text" id="diagnosis-meta">VERIFIED</div>
+              <div class="exec-status-text" id="diagnosis-meta">TRACED</div>
             </div>
           </div>
           <div class="diagnosis-paragraph" id="diagnosis-paragraph"></div>
@@ -214,7 +214,7 @@
 
       <div class="modal-section">
         <div class="modal-section-label">&sect;1 &middot; WHAT IT IS</div>
-        <p class="modal-paragraph">FabOps Copilot diagnoses why a fab service part is at risk of stockout and recommends one of four actions. It's a 9-node LangGraph agent with seven tool functions. It doesn't just call an LLM, it pulls real numbers from DynamoDB, grounds its reasoning in SEC EDGAR filings and FRED macro signals, and produces an audit trail every step.</p>
+        <p class="modal-paragraph">FabOps Copilot diagnoses why a fab service part is at risk of stockout and recommends one of four actions. It's a LangGraph agent with seven tool functions, running an 8-node fast path in production (with an optional 9th verify-retry node behind an env flag). It doesn't just call an LLM, it pulls real numbers from DynamoDB, grounds its reasoning in SEC EDGAR filings and FRED macro signals, and produces an audit trail every step.</p>
       </div>
 
       <div class="modal-section">

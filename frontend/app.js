@@ -535,9 +535,9 @@ function renderResults(query, data) {
 
   // Diagnosis meta (top-right of card)
   if (totalSec > 0) {
-    $('diagnosis-meta').textContent = 'VERIFIED \u00B7 ' + totalSec + 's';
+    $('diagnosis-meta').textContent = 'TRACED \u00B7 ' + totalSec + 's';
   } else {
-    $('diagnosis-meta').textContent = 'VERIFIED';
+    $('diagnosis-meta').textContent = 'TRACED';
   }
 
   // Stat row
@@ -641,8 +641,9 @@ function renderAudit(audit, totalSec) {
     'AUDIT TRAIL \u00B7 ' + audit.length + ' STEPS \u00B7 ' + totalSec + 's' +
     ' \u00B7 ' + (allOk ? 'ALL PASSED' : 'WITH ERRORS');
 
-  // Build progress + log against the canonical 9-node order, but only for
-  // nodes that actually appeared in the audit. Unknown extras get appended.
+  // Build progress + log against the canonical node order (8 in production
+  // fast path, 9 if FABOPS_ENABLE_VERIFY=1), but only for nodes that
+  // actually appeared in the audit. Unknown extras get appended.
   const progressEl = $('audit-progress');
   const logEl = $('audit-log');
   buildExecutionMarkup(progressEl, logEl);
