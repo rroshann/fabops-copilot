@@ -169,7 +169,7 @@ The 7 tool functions live in `fabops/tools/` as plain Python. The runtime Lambda
 
 ## Honest trade-offs
 
-**Gemini Flash, not Pro, in production.** The diagnose node is wired to Gemini 2.5 Flash for demo latency. Pro scored 83.3% on the gold set; Flash is untested but likely lands at 70 to 75%. The flip is a single environment variable (`GEMINI_PRO_MODEL` in `fabops/config.py`). Production-grade accuracy would flip it back and accept the latency penalty.
+**Gemini Flash, not Pro, in production.** The diagnose node is wired to Gemini 2.5 Flash for demo latency. The 83.3% gold-set pass rate was measured under Gemini Pro with verify enabled; the current production config (Flash + verify-off) has not been re-evaluated, so the actual delta is open. The flip is a single environment variable (`GEMINI_PRO_MODEL` in `fabops/config.py`). The re-run is the top open eval item in REPORT §11.
 
 **Langfuse observability was deferred.** The integration code is present (`fabops/observability/langfuse_shim.py`) and the v3 CallbackHandler pattern is wired in, but trace shipping from Lambda never stabilized, suspected SDK v3 vs v4 drift combined with Lambda flush timing. Rather than ship a flaky trace path, the DynamoDB `fabops_audit` table became the production source of truth for per-node observability. Langfuse is listed under Future Work in REPORT.md §10.
 

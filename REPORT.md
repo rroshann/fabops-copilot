@@ -58,7 +58,7 @@ FabOps Copilot is a supply-chain stockout-risk agent that answers natural-langua
                                 v
               +------------------------------------------+
               |  Lambda: fabops_agent_handler             |
-              |  Python 3.9, arm64, zipped (<25 MB)       |
+              |  Python 3.9, arm64, ~42 MB deployed       |
               |  +------------------------------------+   |
               |  |  LangGraph state machine (8 nodes; |   |
               |  |  9th `verify` gated by env var)    |   |
@@ -115,7 +115,7 @@ FabOps Copilot is a supply-chain stockout-risk agent that answers natural-langua
 
 The single most important cold-start decision in the system is the split between two Lambda functions with different packaging strategies.
 
-The **runtime Lambda** (`fabops_agent_handler`) is a zipped deployment at ~26 MB. It contains `langgraph`, `langchain-core`, `anthropic`, `pydantic`, `boto3`, `langfuse`, `python-ulid`, and the project source under `fabops/`. The Google Gemini SDK (`google-generativeai`) is shipped as a **separate Lambda layer** (`fabops-gemini:1`, ~31 MB), attached at function configuration time. This split was deliberate: the Gemini SDK and its protobuf transitive dependencies dominate package size, and isolating them in a layer keeps the deployable function zip under the 50 MB direct-upload ceiling and keeps every redeploy of the agent code fast (small zip, layer cached). The runtime Lambda deliberately never imports `statsforecast`, `numba`, `pandas`, or `mlflow`. The combined deployed code+layer footprint is ~57 MB unzipped, well under the 250 MB Lambda ceiling.
+The **runtime Lambda** (`fabops_agent_handler`) is a zipped deployment at ~42 MB (`CodeSize: 44012528` per `aws lambda get-function-configuration`). It contains `langgraph`, `langchain-core`, `anthropic`, `pydantic`, `boto3`, `langfuse`, `python-ulid`, the project source under `fabops/`, and the 17 MB baked EDGAR chunk asset (`fabops/tools/_edgar_chunks.json.gz`) shipped inside the zip to drop cold-start from ~50 s to ~19 s. The Google Gemini SDK (`google-generativeai`) is shipped as a **separate Lambda layer** (`fabops-gemini:1`, ~31 MB `CodeSize`), attached at function configuration time. The split was deliberate: the Gemini SDK and its protobuf transitive dependencies dominate package size, and isolating them in a layer keeps the deployable function zip under the 50 MB direct-upload ceiling and keeps every redeploy of the agent code fast (small zip, layer cached). The runtime Lambda deliberately never imports `statsforecast`, `numba`, `pandas`, or `mlflow`. Combined deployed code+layer footprint is ~73 MB, well under the 250 MB Lambda unzipped ceiling.
 
 The **nightly Lambda** (`nightly_forecast_bake`) is a container image from ECR (`fabops-nightly:latest`, arm64). It carries the full scientific stack: `statsforecast`, `numba`, `pandas`, `mlflow`. Container images can be up to 10 GB; cold-start is irrelevant because nobody is waiting on an offline cron. The last confirmed successful run was `run_id=2026-04-14T03:59:30.311134`, 200 parts, `has_statsforecast=True`.
 
@@ -293,7 +293,7 @@ One concrete trace to show how the agent reasons end-to-end. Full per-case artif
 
 - **Input:** `"Why is part 10279876 at risk of stocking out at the Taiwan fab, and what should I do?"`
 - **Ground truth driver** (derived from live DDB state): `policy` (staleness_days=409, exceeds the 180-day threshold).
-- **Trajectory** captured from `fabops_audit` (production fast path, verify gated off): `entry → check_policy_staleness → check_demand_drift → check_supply_drift → ground_in_disclosures → diagnose → prescribe_action → finalize` (8 nodes, in order).
+- **Trajectory** in this gold-run case (verify-on configuration): `entry → check_policy_staleness → check_demand_drift → check_supply_drift → ground_in_disclosures → diagnose → prescribe_action → verify → finalize` (`step_count=9`, no retry triggered). The deployed production fast path drops the `verify` step (8 nodes); the per-class pass rate is unchanged because `verify` did not flip any judgments on the 18 cases.
 - **LLM diagnosis:** `{"primary_driver": "policy", "confidence": 0.9, "reasoning": "The inventory policy is significantly stale at 409 days, causing its underlying lead time demand mean assumption (0.078) to be far too low to cover the current, higher demand forecast (0.127)."}`
 - **P90 stockout date:** `2026-04-14`, piped from the Croston/SBA forecast with `on_hand` from `fabops_inventory`.
 - **Recommended action:** `refresh_reorder_policy` (matches the policy-class branch in `prescribe_node`).
@@ -392,7 +392,7 @@ Using Gemini Pro as a fallback judge is not methodologically equivalent to the c
 | Frontend (primary, HTTPS) | AWS Amplify Hosting | `https://main.d23s2e6xnypmh0.amplifyapp.com`, auto-deployed from the `main` branch on push |
 | Frontend (secondary, raw HTTP) | S3 static website | `http://fabops-copilot-frontend.s3-website-us-east-1.amazonaws.com` |
 | API | API Gateway HTTP API | `https://3ph4o9amg4.execute-api.us-east-1.amazonaws.com/getChatResponse`, CORS open, `$default` stage auto-deploy |
-| Runtime compute | AWS Lambda | `fabops_agent_handler`, Python 3.9 arm64, zipped ~26 MB, 1024 MB memory, 180 s timeout |
+| Runtime compute | AWS Lambda | `fabops_agent_handler`, Python 3.9 arm64, zipped ~42 MB (includes 17 MB baked EDGAR chunks), 1024 MB memory, 180 s timeout |
 | Gemini SDK | Lambda layer | `fabops-gemini:1`, ~31 MB, attached to the runtime function |
 | Nightly compute | AWS Lambda (container) | `nightly_forecast_bake`, ECR `fabops-nightly:latest`, arm64, 3008 MB, 900 s timeout |
 | Schedule | EventBridge | rule `fabops-nightly-bake`, `cron(0 2 * * ? *)` (02:00 UTC daily) |
@@ -515,7 +515,7 @@ The two-face pattern is a deliberate answer to the common anti-pattern of "a Lan
 | Component | Value |
 |---|---|
 | AWS Account | 699475932108, us-east-1 |
-| Runtime Lambda | `fabops_agent_handler`, Python 3.9 arm64, zipped ~26 MB, 1024 MB memory, 180 s timeout |
+| Runtime Lambda | `fabops_agent_handler`, Python 3.9 arm64, zipped ~42 MB (includes 17 MB baked EDGAR chunks), 1024 MB memory, 180 s timeout |
 | Lambda layer | `fabops-gemini:1` (~31 MB), bundles `google-generativeai` + protobuf transitive deps |
 | Frontend | AWS Amplify Hosting (HTTPS, GitHub auto-deploy from `main`) + S3 static site fallback |
 | Nightly Lambda | `nightly_forecast_bake`, ECR `fabops-nightly:latest`, arm64, 3008 MB, 900 s timeout |
