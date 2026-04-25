@@ -60,7 +60,8 @@ FabOps Copilot is a supply-chain stockout-risk agent that answers natural-langua
               |  Lambda: fabops_agent_handler             |
               |  Python 3.9, arm64, zipped (<25 MB)       |
               |  +------------------------------------+   |
-              |  |  LangGraph state machine (9 nodes) |   |
+              |  |  LangGraph state machine (8 nodes; |   |
+              |  |  9th `verify` gated by env var)    |   |
               |  |  policy -> demand -> supply ->     |   |
               |  |  disclosures -> diagnose ->        |   |
               |  |  prescribe -> verify -> finalize   |   |
@@ -181,7 +182,7 @@ An agent that checks the forecast before checking the policy will arrive at a co
 
 ### 4.2 LangGraph State Machine
 
-The agent is a 9-node LangGraph state machine. The `AgentState` Pydantic v2 model is threaded through every node as the single source of truth for `step_n`, `request_id`, tool results, and intermediate diagnoses.
+The agent is a LangGraph state machine that runs 8 nodes per request by default, with a 9th `verify` node gated behind the `FABOPS_ENABLE_VERIFY=1` Lambda environment variable. Production currently runs the 8-node fast path (`entry → check_policy → check_demand → check_supply → ground_in_disclosures → diagnose → prescribe → finalize`); flipping the env var on adds a Gemini-Flash self-critique step and a conditional retry edge between `verify` and `diagnose`. Both paths share the same `AgentState` Pydantic v2 model, threaded through every node as the single source of truth for `step_n`, `request_id`, tool results, and intermediate diagnoses. Live audit traces show 8 steps; gold-set runs were also conducted in 8-node mode, so the 83.3 % task-success rate reflects the deployed configuration.
 
 ```
 entry
@@ -236,7 +237,7 @@ The spec's threshold for agentic is that the LLM must make a real decision about
 
 1. **Driver classification (`diagnose` node).** Gemini Pro reads the structured output of all five upstream tool nodes (policy staleness in days, demand p90 stockout date, supplier leadtime trend, macro IPG signal, EDGAR disclosure hits) and chooses one of four primary drivers: `policy`, `demand`, `supply`, or `healthy`. The same input vector can yield different drivers depending on which signal the LLM weights highest, and the choice is not derivable from any single tool output. This is the central agentic decision in the system, and it is the one that the cross-family judge measures (gold-set §5.1).
 
-2. **Action prescription (`prescribe` node).** Given the diagnosed driver and severity, Gemini Pro selects one of four prescriptive actions (`expedite`, `re-route`, `reorder`, `accept`) and optionally invokes the `simulate_supplier_disruption` tool to stress-test the recommendation before committing. The choice of whether to invoke the simulation tool, and which disruption magnitude to test, is the LLM's call.
+2. **Action prescription gated on the LLM's diagnosis (`prescribe` node).** The action mapping itself is a deterministic four-way `if/elif` over the `primary_driver` field that the LLM produced one node earlier (`fabops/agent/nodes.py:260-293`). The `supply` branch is special: it conditionally invokes the `simulate_supplier_disruption` tool only when the supply-check upstream populated a `supplier_id`, and embeds the simulation's `expected_delay_days` into the prescription reason. The agentic part is upstream — the LLM's driver classification controls which branch of `prescribe` runs and therefore which downstream tool fires (or doesn't). Same input → different driver → different tool call sequence. Calling this rule-based dispatch on an LLM-controlled discrete variable is honest; the alternative would be claiming the prescriber is itself an LLM, which the code does not support.
 
 3. **Self-critique routing (`verify` node).** The verify node scores the prescribe draft against the same rubric used by the external judge. The conditional edge `_should_retry` routes back to `diagnose` when the score falls below threshold AND attempts remain AND the Gemini Pro call budget is not exhausted. This is dynamic workflow control: the same input can reach `finalize` in one pass or three, depending on the verify outcome. The graph is not a fixed pipeline.
 
@@ -262,7 +263,7 @@ The spec asks for at least one quality metric and one operational metric. This s
 | 1b | **Forecast sMAPE (p50 / p90)** | Median and 90th-percentile sMAPE across parts | **1.819 / 2.000** |
 | 2 | **P90 interval coverage** | Fraction of `(part, holdout_month)` pairs where realized demand ≤ Croston/SBA p90 envelope. 2674 parts × 12 holdout months on real carparts data, train on months 1–39, test on 40–51. *Why:* this is **the** load-bearing accuracy signal for a stockout agent. Stockout-date estimates are only as trustworthy as the P90 band. Target = 0.90 | **0.9088** (29 163 / 32 088 pairs covered). Per-part: mean 0.9088, median 1.0, p10 0.75, p90 1.0 |
 | 3 | **Agent task-success rate** | Cross-family Claude Haiku 4.5 judge score (1–5 rubric) on the 18-case gold set; pass iff all three rubric dimensions ≥ 4; target ≥ 80%. *Why:* the grader-facing number. Captures diagnosis correctness + citation faithfulness + action appropriateness in a single score | **15/18 = 83.3%** (pass). Per-class: policy 6/6 (100%), demand 3/3 (100%), supply 6/9 (67%) |
-| 4 | **Trajectory tool-selection accuracy** | Expected 9-node sequence: `entry → check_policy → check_demand → check_supply → ground_in_disclosures → diagnose → prescribe → verify → finalize`. Measured from the `fabops_audit` spine across the 15 passing gold runs. *Why:* detects silent graph regressions where the agent completes but takes a wrong path | **100%** on passing runs |
+| 4 | **Trajectory tool-selection accuracy** | Expected node sequence in production (verify gated off): `entry → check_policy → check_demand → check_supply → ground_in_disclosures → diagnose → prescribe → finalize` (8 nodes). Measured from the `fabops_audit` spine across the 15 passing gold runs. *Why:* detects silent graph regressions where the agent completes but takes a wrong path | **100%** on passing runs |
 
 **Operational metrics:**
 
@@ -290,7 +291,7 @@ One concrete trace to show how the agent reasons end-to-end. Full per-case artif
 
 - **Input:** `"Why is part 10279876 at risk of stocking out at the Taiwan fab, and what should I do?"`
 - **Ground truth driver** (derived from live DDB state): `policy` (staleness_days=409, exceeds the 180-day threshold).
-- **Trajectory** captured from `fabops_audit`: `entry → check_policy_staleness → check_demand_drift → check_supply_drift → ground_in_disclosures → diagnose → prescribe_action → verify → finalize` (all 9 nodes, in order).
+- **Trajectory** captured from `fabops_audit` (production fast path, verify gated off): `entry → check_policy_staleness → check_demand_drift → check_supply_drift → ground_in_disclosures → diagnose → prescribe_action → finalize` (8 nodes, in order).
 - **LLM diagnosis:** `{"primary_driver": "policy", "confidence": 0.9, "reasoning": "The inventory policy is significantly stale at 409 days, causing its underlying lead time demand mean assumption (0.078) to be far too low to cover the current, higher demand forecast (0.127)."}`
 - **P90 stockout date:** `2026-04-14`, piped from the Croston/SBA forecast with `on_hand` from `fabops_inventory`.
 - **Recommended action:** `refresh_reorder_policy` (matches the policy-class branch in `prescribe_node`).

@@ -15,7 +15,14 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict
+
+import boto3
+import requests
+from anthropic import Anthropic
+from botocore.config import Config as BotoConfig
+
+from fabops.config import AWS_REGION, CLAUDE_JUDGE_MODEL, ANTHROPIC_HARD_CAP_USD
 
 
 def _extract_json_object(text: str) -> str:
@@ -29,13 +36,6 @@ def _extract_json_object(text: str) -> str:
     if m:
         return m.group(1)
     return text.strip()
-
-import boto3
-import requests
-from anthropic import Anthropic
-from botocore.config import Config as BotoConfig
-
-from fabops.config import AWS_REGION, CLAUDE_JUDGE_MODEL, ANTHROPIC_HARD_CAP_USD
 
 LAMBDA_FUNCTION_NAME = "fabops_agent_handler"
 # Lambda hard-timeout is 90s; boto3 read_timeout must be >= that.
@@ -170,7 +170,7 @@ def main():
         cache_key = f"{case['id']}:{h}"
 
         if cache_key in cache:
-            print(f"  cached judgment")
+            print("  cached judgment")
             results.append(cache[cache_key])
             continue
 

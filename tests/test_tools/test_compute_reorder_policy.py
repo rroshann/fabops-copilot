@@ -4,11 +4,13 @@ from unittest.mock import patch, MagicMock
 
 def test_compute_reorder_policy_with_cached_stats():
     from fabops.tools import compute_reorder_policy as mod
-    fake_get = lambda table, key: {
-        "leadtime_demand_mean": 10.0,
-        "leadtime_demand_std": 3.0,
-        "last_updated": "2026-04-01T00:00:00",
-    }
+
+    def fake_get(table, key):
+        return {
+            "leadtime_demand_mean": 10.0,
+            "leadtime_demand_std": 3.0,
+            "last_updated": "2026-04-01T00:00:00",
+        }
     fake_table = MagicMock()
     with patch.object(mod, "get_item", side_effect=fake_get):
         with patch.object(mod, "get_table", return_value=fake_table):

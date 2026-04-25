@@ -1,0 +1,642 @@
+{
+  "gold-001:407a20badb299feb": {
+    "verdict": {
+      "correctness": 5,
+      "citation_faithfulness": 4,
+      "action_appropriateness": 5,
+      "pass": true,
+      "issues": [
+        "Minor: The citation for the P90 stockout date references a Zenodo record (Hyndman carparts / Croston forecast) which is a general methodological reference rather than a tool output showing the actual forecast result for this specific part. The reasoning is sound, but the citation could be more direct (e.g., citing the actual forecast tool output for part 10279876). However, this is a minor weakness\u2014the excerpt does mention 'P90 = 2026-04-14' which establishes the claim."
+      ]
+    },
+    "cost_usd": 0.00271,
+    "case_id": "gold-001",
+    "response": {
+      "request_id": "b0c23a5f-c40e-4fa5-b274-be3fcbb9e6d2",
+      "answer": "DIAGNOSIS: primary driver = policy (confidence 0.90)\nP90 STOCKOUT DATE: 2026-04-14\nRECOMMENDED ACTION: refresh_reorder_policy\n",
+      "diagnosis": {
+        "primary_driver": "policy",
+        "confidence": 0.9,
+        "reasoning": "The inventory policy is significantly stale at 409 days, causing its underlying lead time demand mean assumption (0.078) to be far too low to cover the current, higher demand forecast (0.127)."
+      },
+      "p90_stockout_date": "2026-04-14",
+      "citations": [
+        {
+          "source": "Hyndman carparts / Croston forecast",
+          "url": "https://zenodo.org/records/3994911",
+          "excerpt": "croston_sba model, P90 = 2026-04-14"
+        },
+        {
+          "source": "reorder policy (classical OR)",
+          "excerpt": "staleness = 409 days"
+        }
+      ],
+      "step_count": 9
+    }
+  },
+  "gold-002:63424f249ea0150b": {
+    "verdict": {
+      "correctness": 5,
+      "citation_faithfulness": 4,
+      "action_appropriateness": 5,
+      "pass": true,
+      "issues": [
+        "Citation for staleness claim is minimal (no URL or specific tool output shown), but the reasoning is sound and the driver diagnosis is correct"
+      ]
+    },
+    "cost_usd": 0.002281,
+    "case_id": "gold-002",
+    "response": {
+      "request_id": "18415603-bd6f-4d7e-af18-8ad737e5ee2e",
+      "answer": "DIAGNOSIS: primary driver = policy (confidence 0.90)\nP90 STOCKOUT DATE: not computed\nRECOMMENDED ACTION: refresh_reorder_policy\n",
+      "diagnosis": {
+        "primary_driver": "policy",
+        "confidence": 0.9,
+        "reasoning": "The inventory policy is the primary risk because it is extremely stale at 409 days, resulting in an illogical reorder point of less than one unit that would fail to buffer against any future demand."
+      },
+      "p90_stockout_date": null,
+      "citations": [
+        {
+          "source": "Hyndman carparts / Croston forecast",
+          "url": "https://zenodo.org/records/3994911",
+          "excerpt": "croston_sba model, P90 = None"
+        },
+        {
+          "source": "reorder policy (classical OR)",
+          "excerpt": "staleness = 409 days"
+        }
+      ],
+      "step_count": 9
+    }
+  },
+  "gold-003:a7dce1b4a99a98a5": {
+    "verdict": {
+      "correctness": 5,
+      "citation_faithfulness": 4,
+      "action_appropriateness": 5,
+      "pass": true,
+      "issues": [
+        "Minor: The Zenodo citation URL is a generic reference work rather than a direct tool output showing the specific P90 calculation for part 10501552 at Singapore fab. The excerpt claims 'croston_sba model, P90 = 2027-03-10' but does not include enough context to verify this was derived from the agent's own tool call vs. general documentation. However, the reasoning about policy staleness (409 days) is clearly grounded in a tool result."
+      ]
+    },
+    "cost_usd": 0.002667,
+    "case_id": "gold-003",
+    "response": {
+      "request_id": "eddb24c8-e10c-4c1e-94c6-5a311f9dcf43",
+      "answer": "DIAGNOSIS: primary driver = policy (confidence 0.90)\nP90 STOCKOUT DATE: 2027-03-10\nRECOMMENDED ACTION: refresh_reorder_policy\n",
+      "diagnosis": {
+        "primary_driver": "policy",
+        "confidence": 0.9,
+        "reasoning": "The inventory policy is critically stale, having not been updated in 409 days, which means the reorder point and safety stock are likely misaligned with current reality."
+      },
+      "p90_stockout_date": "2027-03-10",
+      "citations": [
+        {
+          "source": "Hyndman carparts / Croston forecast",
+          "url": "https://zenodo.org/records/3994911",
+          "excerpt": "croston_sba model, P90 = 2027-03-10"
+        },
+        {
+          "source": "reorder policy (classical OR)",
+          "excerpt": "staleness = 409 days"
+        }
+      ],
+      "step_count": 9
+    }
+  },
+  "gold-004:2d827aa1408cebd5": {
+    "verdict": {
+      "correctness": 5,
+      "citation_faithfulness": 4,
+      "action_appropriateness": 5,
+      "pass": true,
+      "issues": [
+        "Citation for P90 stockout date lacks explicit detail (should specify which tool computed this, e.g., inventory simulation or forecast model), but the source reference is reasonable.",
+        "The reorder policy staleness citation could include the actual policy timestamp for full traceability."
+      ]
+    },
+    "cost_usd": 0.002568,
+    "case_id": "gold-004",
+    "response": {
+      "request_id": "f5400cc0-a7dd-454d-b654-7814af5742ae",
+      "answer": "DIAGNOSIS: primary driver = policy (confidence 0.95)\nP90 STOCKOUT DATE: 2026-04-14\nRECOMMENDED ACTION: refresh_reorder_policy\n",
+      "diagnosis": {
+        "primary_driver": "policy",
+        "confidence": 0.95,
+        "reasoning": "The inventory policy is over 409 days stale and is based on a lead-time demand mean (0.078) that is an order of magnitude lower than the current forecast (0.633), making the calculated reorder point completely misaligned with reality."
+      },
+      "p90_stockout_date": "2026-04-14",
+      "citations": [
+        {
+          "source": "Hyndman carparts / Croston forecast",
+          "url": "https://zenodo.org/records/3994911",
+          "excerpt": "croston_sba model, P90 = 2026-04-14"
+        },
+        {
+          "source": "reorder policy (classical OR)",
+          "excerpt": "staleness = 409 days"
+        }
+      ],
+      "step_count": 9
+    }
+  },
+  "gold-005:044fda83b20304e6": {
+    "verdict": {
+      "correctness": 5,
+      "citation_faithfulness": 4,
+      "action_appropriateness": 5,
+      "pass": true,
+      "issues": [
+        "Minor: The citation for P90 stockout date references a Zenodo paper (Hyndman carparts / Croston forecast) which appears to be a general forecasting reference rather than a specific tool result for this part at this fab. The staleness metric (409 days) is well-cited to the reorder policy source."
+      ]
+    },
+    "cost_usd": 0.0014529999999999999,
+    "case_id": "gold-005",
+    "response": {
+      "request_id": "2b7324f6-a11d-4f7b-83d0-c37d1d208d8f",
+      "answer": "DIAGNOSIS: primary driver = policy (confidence 0.90)\nP90 STOCKOUT DATE: 2026-04-14\nRECOMMENDED ACTION: refresh_reorder_policy\n",
+      "diagnosis": {
+        "primary_driver": "policy",
+        "confidence": 0.9,
+        "reasoning": "The inventory policy has not been updated in 409 days, making its reorder points and safety stock levels inadequate for the current, degrading supplier performance."
+      },
+      "p90_stockout_date": "2026-04-14",
+      "citations": [
+        {
+          "source": "Hyndman carparts / Croston forecast",
+          "url": "https://zenodo.org/records/3994911",
+          "excerpt": "croston_sba model, P90 = 2026-04-14"
+        },
+        {
+          "source": "reorder policy (classical OR)",
+          "excerpt": "staleness = 409 days"
+        }
+      ],
+      "step_count": 9
+    }
+  },
+  "gold-006:84fbfe5ecca7aab6": {
+    "verdict": {
+      "correctness": 5,
+      "citation_faithfulness": 4,
+      "action_appropriateness": 5,
+      "pass": true,
+      "issues": [
+        "Minor: The Croston forecast citation could be more explicit about what data fed into the P90 calculation (e.g., which demand history window, lead time assumptions). The staleness citation is appropriately specific."
+      ]
+    },
+    "cost_usd": 0.0013219999999999998,
+    "case_id": "gold-006",
+    "response": {
+      "request_id": "ccbf19c9-5ab8-4992-9303-49ec5fef0243",
+      "answer": "DIAGNOSIS: primary driver = policy (confidence 0.90)\nP90 STOCKOUT DATE: 2026-04-14\nRECOMMENDED ACTION: refresh_reorder_policy\n",
+      "diagnosis": {
+        "primary_driver": "policy",
+        "confidence": 0.9,
+        "reasoning": "The inventory policy is over 400 days stale, which means the reorder point and safety stock values are likely too low to protect against current demand and lead-time variability, directly causing the stockout."
+      },
+      "p90_stockout_date": "2026-04-14",
+      "citations": [
+        {
+          "source": "Hyndman carparts / Croston forecast",
+          "url": "https://zenodo.org/records/3994911",
+          "excerpt": "croston_sba model, P90 = 2026-04-14"
+        },
+        {
+          "source": "reorder policy (classical OR)",
+          "excerpt": "staleness = 409 days"
+        }
+      ],
+      "step_count": 9
+    }
+  },
+  "gold-007:d79f147fde1d77e4": {
+    "verdict": {
+      "correctness": 5,
+      "citation_faithfulness": 4,
+      "action_appropriateness": 5,
+      "pass": true,
+      "issues": [
+        "Citation for P90 stockout date references Zenodo DOI and Croston model but does not include explicit numerical verification from the tool output itself (e.g., no tool call result snippet showing '2026-08-12'). Minor: the reorder policy citation lacks a specific numerical reference (e.g., current stock level or days-on-hand) to fully ground the staleness claim."
+      ]
+    },
+    "cost_usd": 0.002542,
+    "case_id": "gold-007",
+    "response": {
+      "request_id": "43b51754-a2a8-43c9-b12c-f0335bab3c30",
+      "answer": "DIAGNOSIS: primary driver = supply (confidence 0.90)\nP90 STOCKOUT DATE: 2026-08-12\nRECOMMENDED ACTION: expedite\n",
+      "diagnosis": {
+        "primary_driver": "supply",
+        "confidence": 0.9,
+        "reasoning": "The supplier's 30-day lead time trend is explicitly marked as 'degrading', indicating an increasing risk of delayed replenishment not yet reflected in the current inventory policy."
+      },
+      "p90_stockout_date": "2026-08-12",
+      "citations": [
+        {
+          "source": "Hyndman carparts / Croston forecast",
+          "url": "https://zenodo.org/records/3994911",
+          "excerpt": "croston_sba model, P90 = 2026-08-12"
+        },
+        {
+          "source": "reorder policy (classical OR)",
+          "excerpt": "staleness = 0 days"
+        }
+      ],
+      "step_count": 12
+    }
+  },
+  "gold-008:95e36faccbac95b3": {
+    "verdict": {
+      "correctness": 5,
+      "citation_faithfulness": 4,
+      "action_appropriateness": 5,
+      "pass": true,
+      "issues": [
+        "Minor: The citation for the P90 stockout date references a Zenodo DOI but does not include the actual tool call or output that produced the 2026-04-14 date. The citation is present but lacks the direct evidence trail that would make it fully verifiable."
+      ]
+    },
+    "cost_usd": 0.001379,
+    "case_id": "gold-008",
+    "response": {
+      "request_id": "e759cf01-9425-4541-a304-362e9e5ee232",
+      "answer": "DIAGNOSIS: primary driver = supply (confidence 0.95)\nP90 STOCKOUT DATE: 2026-04-14\nRECOMMENDED ACTION: expedite\n",
+      "diagnosis": {
+        "primary_driver": "supply",
+        "confidence": 0.95,
+        "reasoning": "The part is already stocked out with zero on-hand inventory, and the supply check explicitly indicates the supplier's performance trend is \"degrading\" over the last 30 days."
+      },
+      "p90_stockout_date": "2026-04-14",
+      "citations": [
+        {
+          "source": "Hyndman carparts / Croston forecast",
+          "url": "https://zenodo.org/records/3994911",
+          "excerpt": "croston_sba model, P90 = 2026-04-14"
+        },
+        {
+          "source": "reorder policy (classical OR)",
+          "excerpt": "staleness = 0 days"
+        }
+      ],
+      "step_count": 9
+    }
+  },
+  "gold-009:3f2fc1632c1e260d": {
+    "verdict": {
+      "correctness": 2,
+      "citation_faithfulness": 3,
+      "action_appropriateness": 2,
+      "pass": false,
+      "issues": [
+        "CRITICAL: Agent diagnosed 'demand' as primary driver, but ground truth is 'supply'. This is the opposite conclusion. The agent's reasoning about demand surge is plausible in isolation but contradicts the established ground truth that this is a supply-driven risk.",
+        "ACTION MISMATCH: Agent recommended 'place_reorder' (demand-driven action), but ground truth requires 'expedite' (supply-driven action). For supply constraints, expediting existing orders is the correct response, not placing new reorders.",
+        "CITATION GAPS: While the agent cites a Croston forecast model and reorder policy staleness, it does not cite specific on-hand inventory levels, supplier lead times, or supply-side constraints that would support either the demand or supply diagnosis. The citations are generic and do not ground the core diagnosis claim.",
+        "REASONING FLAW: Agent assumes high confidence (0.90) in demand driver based on forecast vs. historical mean comparison, but provides no evidence of supply-side data (e.g., supplier delays, allocation constraints) that would actually distinguish demand-driven from supply-driven risk in this case."
+      ]
+    },
+    "cost_usd": 0.002356,
+    "case_id": "gold-009",
+    "response": {
+      "request_id": "c99c7971-3f74-49a5-8a6b-5df1325e3e42",
+      "answer": "DIAGNOSIS: primary driver = demand (confidence 0.90)\nP90 STOCKOUT DATE: 2026-04-14\nRECOMMENDED ACTION: place_reorder\n",
+      "diagnosis": {
+        "primary_driver": "demand",
+        "confidence": 0.9,
+        "reasoning": "The part is already stocked out with on_hand at zero, and the demand forecast of 0.38 is substantially higher than the historical leadtime demand mean of 0.078 used for policy calculations, indicating a recent, unmitigated surge in demand."
+      },
+      "p90_stockout_date": "2026-04-14",
+      "citations": [
+        {
+          "source": "Hyndman carparts / Croston forecast",
+          "url": "https://zenodo.org/records/3994911",
+          "excerpt": "croston_sba model, P90 = 2026-04-14"
+        },
+        {
+          "source": "reorder policy (classical OR)",
+          "excerpt": "staleness = 0 days"
+        }
+      ],
+      "step_count": 9
+    }
+  },
+  "gold-010:dc4bbf8d41707944": {
+    "verdict": {
+      "correctness": 5,
+      "citation_faithfulness": 3,
+      "action_appropriateness": 5,
+      "pass": false,
+      "issues": [
+        "Correctness is sound: diagnosis correctly identifies 'supply' as primary driver, matching ground truth exactly with high confidence (0.90).",
+        "Action is perfect: 'expedite' matches the supply-driven driver textbook recommendation.",
+        "Citation faithfulness is weak (score 3): The response cites two sources but provides minimal substantive backing. The 'Hyndman carparts / Croston forecast' citation reports 'P90 = None' without explaining why the forecast failed or what evidence supports the supply degradation claim. The 'reorder policy' citation merely states 'staleness = 0 days' without connecting this metric to the diagnosis. The core claim\u2014'supplier's 30-day performance trend is degrading' and 'macroeconomic signals show year-over-year increase'\u2014are stated in reasoning but not supported by explicit numerical citations. A passing answer (\u22654) would cite specific supplier metrics (e.g., 'delivery lead time increased from X to Y days') and macroeconomic data (e.g., 'industry production up Z% YoY').",
+        "Overall: Passes correctness and action, but fails citation faithfulness threshold. Does not meet overall pass criterion (all three \u22654)."
+      ]
+    },
+    "cost_usd": 0.0024690000000000003,
+    "case_id": "gold-010",
+    "response": {
+      "request_id": "db2bdded-1602-4ec1-9679-8c2d98577fb8",
+      "answer": "DIAGNOSIS: primary driver = supply (confidence 0.90)\nP90 STOCKOUT DATE: not computed\nRECOMMENDED ACTION: expedite\n",
+      "diagnosis": {
+        "primary_driver": "supply",
+        "confidence": 0.9,
+        "reasoning": "The supplier's 30-day performance trend is 'degrading' and macroeconomic signals show a significant year-over-year increase in industry production, indicating potential for supply disruption."
+      },
+      "p90_stockout_date": null,
+      "citations": [
+        {
+          "source": "Hyndman carparts / Croston forecast",
+          "url": "https://zenodo.org/records/3994911",
+          "excerpt": "croston_sba model, P90 = None"
+        },
+        {
+          "source": "reorder policy (classical OR)",
+          "excerpt": "staleness = 0 days"
+        }
+      ],
+      "step_count": 12
+    }
+  },
+  "gold-011:c0e4e1dd57f5a7f5": {
+    "verdict": {
+      "correctness": 5,
+      "citation_faithfulness": 4,
+      "action_appropriateness": 5,
+      "pass": true,
+      "issues": [
+        "Citation for 'supplier 30-day performance trend is degrading' and '10.3% YoY semiconductor index growth' is not explicitly provided in the citations array, though the reasoning references these metrics. Minor: supporting data for the confidence assessment could be more explicitly cited."
+      ]
+    },
+    "cost_usd": 0.001379,
+    "case_id": "gold-011",
+    "response": {
+      "request_id": "b4978ee2-3403-4118-b8c4-92d500d8acb5",
+      "answer": "DIAGNOSIS: primary driver = supply (confidence 0.90)\nP90 STOCKOUT DATE: 2026-09-11\nRECOMMENDED ACTION: expedite\n",
+      "diagnosis": {
+        "primary_driver": "supply",
+        "confidence": 0.9,
+        "reasoning": "The supplier's 30-day performance trend is 'degrading' and the broader semiconductor manufacturing index shows strong YoY growth (10.3%), indicating tightening supply conditions are the most significant risk."
+      },
+      "p90_stockout_date": "2026-09-11",
+      "citations": [
+        {
+          "source": "Hyndman carparts / Croston forecast",
+          "url": "https://zenodo.org/records/3994911",
+          "excerpt": "croston_sba model, P90 = 2026-09-11"
+        },
+        {
+          "source": "reorder policy (classical OR)",
+          "excerpt": "staleness = 0 days"
+        }
+      ],
+      "step_count": 12
+    }
+  },
+  "gold-012:a8566c377d6f61b3": {
+    "verdict": {
+      "correctness": 5,
+      "citation_faithfulness": 3,
+      "action_appropriateness": 5,
+      "pass": false,
+      "issues": [
+        "Correctness is sound: diagnosis correctly identifies 'supply' as primary driver, matching ground truth.",
+        "Action is correct: 'expedite' is the textbook response for supply-driven stockouts.",
+        "Citation faithfulness is weak: the response cites a Zenodo record and mentions 'Croston forecast' and 'reorder policy' but provides no actual numerical evidence (lead times, supplier performance metrics, inventory levels, etc.). The claim about '30-day performance trend is degrading' lacks supporting data or tool output. The P90 stockout date is null, so even the forecasting step appears incomplete. Citations are present but don't substantiate the core reasoning.",
+        "Overall: fails because citation_faithfulness (3) < 4, even though correctness and action are perfect."
+      ]
+    },
+    "cost_usd": 0.001941,
+    "case_id": "gold-012",
+    "response": {
+      "request_id": "82c013a9-09b1-45d3-ac9f-0d6febda8461",
+      "answer": "DIAGNOSIS: primary driver = supply (confidence 0.90)\nP90 STOCKOUT DATE: not computed\nRECOMMENDED ACTION: expedite\n",
+      "diagnosis": {
+        "primary_driver": "supply",
+        "confidence": 0.9,
+        "reasoning": "The supplier's 30-day performance trend is 'degrading', indicating increasing lead times or variability which heightens the risk of a future stockout."
+      },
+      "p90_stockout_date": null,
+      "citations": [
+        {
+          "source": "Hyndman carparts / Croston forecast",
+          "url": "https://zenodo.org/records/3994911",
+          "excerpt": "croston_sba model, P90 = None"
+        },
+        {
+          "source": "reorder policy (classical OR)",
+          "excerpt": "staleness = 0 days"
+        }
+      ],
+      "step_count": 12
+    }
+  },
+  "gold-013:1d9c283e2baa2bba": {
+    "verdict": {
+      "correctness": 5,
+      "citation_faithfulness": 4,
+      "action_appropriateness": 5,
+      "pass": true,
+      "issues": [
+        "Minor: The citation for 'reorder policy (classical OR)' with 'staleness = 0 days' is somewhat vague about what this excerpt directly supports. The claim that current demand is 'significantly higher than historical demand mean' is not explicitly backed by a numerical comparison in the citations, though the Croston forecast citation does support the P90 stockout date calculation."
+      ]
+    },
+    "cost_usd": 0.001497,
+    "case_id": "gold-013",
+    "response": {
+      "request_id": "6a28e71b-c9eb-4481-a384-7116ad3e6d7d",
+      "answer": "DIAGNOSIS: primary driver = demand (confidence 1.00)\nP90 STOCKOUT DATE: 2026-04-14\nRECOMMENDED ACTION: place_reorder\n",
+      "diagnosis": {
+        "primary_driver": "demand",
+        "confidence": 1.0,
+        "reasoning": "The part is already stocked out with zero on-hand inventory, and the current demand forecast is significantly higher than the historical demand mean used to calculate inventory policy."
+      },
+      "p90_stockout_date": "2026-04-14",
+      "citations": [
+        {
+          "source": "Hyndman carparts / Croston forecast",
+          "url": "https://zenodo.org/records/3994911",
+          "excerpt": "croston_sba model, P90 = 2026-04-14"
+        },
+        {
+          "source": "reorder policy (classical OR)",
+          "excerpt": "staleness = 0 days"
+        }
+      ],
+      "step_count": 9
+    }
+  },
+  "gold-014:110b42e202bf77c9": {
+    "verdict": {
+      "correctness": 5,
+      "citation_faithfulness": 4,
+      "action_appropriateness": 5,
+      "pass": true,
+      "issues": [
+        "Minor: Citation for Croston forecast includes a Zenodo URL that appears generic/illustrative rather than a direct query result from the agent's tool calls. The excerpt itself is specific and plausible, but the URL formatting suggests it may not be a live tool output. However, the forecast value and reasoning are sound."
+      ]
+    },
+    "cost_usd": 0.002526,
+    "case_id": "gold-014",
+    "response": {
+      "request_id": "16f9ef79-1efd-4913-b652-dd3905f279a7",
+      "answer": "DIAGNOSIS: primary driver = demand (confidence 0.90)\nP90 STOCKOUT DATE: 2026-04-14\nRECOMMENDED ACTION: place_reorder\n",
+      "diagnosis": {
+        "primary_driver": "demand",
+        "confidence": 0.9,
+        "reasoning": "The part is already stocked out with an on-hand quantity of zero, indicating a recent, unforecasted consumption event drove the inventory depletion, especially since the policy is not stale and supply signals are improving."
+      },
+      "p90_stockout_date": "2026-04-14",
+      "citations": [
+        {
+          "source": "Hyndman carparts / Croston forecast",
+          "url": "https://zenodo.org/records/3994911",
+          "excerpt": "croston_sba model, P90 = 2026-04-14"
+        },
+        {
+          "source": "reorder policy (classical OR)",
+          "excerpt": "staleness = 0 days"
+        }
+      ],
+      "step_count": 9
+    }
+  },
+  "gold-015:eaba67fa75aa91f7": {
+    "verdict": {
+      "correctness": 5,
+      "citation_faithfulness": 4,
+      "action_appropriateness": 5,
+      "pass": true,
+      "issues": [
+        "Citation for 'degrading 30-day performance trend' and 'high lead time variability' is mentioned in reasoning but not explicitly linked to a tool result in the citations array. Minor gap in traceability of supporting evidence."
+      ]
+    },
+    "cost_usd": 0.00133,
+    "case_id": "gold-015",
+    "response": {
+      "request_id": "ab591df0-4edc-4909-a10f-6da20c7f7c43",
+      "answer": "DIAGNOSIS: primary driver = supply (confidence 0.95)\nP90 STOCKOUT DATE: 2026-04-14\nRECOMMENDED ACTION: expedite\n",
+      "diagnosis": {
+        "primary_driver": "supply",
+        "confidence": 0.95,
+        "reasoning": "The stockout is driven by supply-side issues, as evidenced by the supplier's 'degrading' 30-day performance trend and high lead time variability."
+      },
+      "p90_stockout_date": "2026-04-14",
+      "citations": [
+        {
+          "source": "Hyndman carparts / Croston forecast",
+          "url": "https://zenodo.org/records/3994911",
+          "excerpt": "croston_sba model, P90 = 2026-04-14"
+        },
+        {
+          "source": "reorder policy (classical OR)",
+          "excerpt": "staleness = 0 days"
+        }
+      ],
+      "step_count": 9
+    }
+  },
+  "gold-016:1b0107041319b926": {
+    "verdict": {
+      "correctness": 5,
+      "citation_faithfulness": 4,
+      "action_appropriateness": 5,
+      "pass": true,
+      "issues": [
+        "Citation for reorder policy lacks a URL/source locator, though the excerpt itself is clear and verifiable. Minor formatting inconsistency but does not affect claim support."
+      ]
+    },
+    "cost_usd": 0.0022700000000000003,
+    "case_id": "gold-016",
+    "response": {
+      "request_id": "7c21dc09-2ad8-4040-b287-fb5b5da666a8",
+      "answer": "DIAGNOSIS: primary driver = demand (confidence 0.95)\nP90 STOCKOUT DATE: 2026-04-14\nRECOMMENDED ACTION: place_reorder\n",
+      "diagnosis": {
+        "primary_driver": "demand",
+        "confidence": 0.95,
+        "reasoning": "The stockout is primarily driven by demand because the on-hand inventory is zero, indicating all available stock has been consumed, while supply signals remain stable and the inventory policy is up-to-date."
+      },
+      "p90_stockout_date": "2026-04-14",
+      "citations": [
+        {
+          "source": "Hyndman carparts / Croston forecast",
+          "url": "https://zenodo.org/records/3994911",
+          "excerpt": "croston_sba model, P90 = 2026-04-14"
+        },
+        {
+          "source": "reorder policy (classical OR)",
+          "excerpt": "staleness = 0 days"
+        }
+      ],
+      "step_count": 9
+    }
+  },
+  "gold-017:f1748e92bc6b60e4": {
+    "verdict": {
+      "correctness": 5,
+      "citation_faithfulness": 4,
+      "action_appropriateness": 5,
+      "pass": true,
+      "issues": [
+        "Citation for 'degrading supplier performance' claim is not explicitly provided in the citations array, though the diagnosis reasoning references it. The two citations given (Hyndman forecast and reorder policy) support the stockout date and staleness but not the supplier degradation claim directly."
+      ]
+    },
+    "cost_usd": 0.001382,
+    "case_id": "gold-017",
+    "response": {
+      "request_id": "800b0b35-89cb-44c7-904a-d00ddd3a58cd",
+      "answer": "DIAGNOSIS: primary driver = supply (confidence 0.90)\nP90 STOCKOUT DATE: 2026-04-14\nRECOMMENDED ACTION: expedite\n",
+      "diagnosis": {
+        "primary_driver": "supply",
+        "confidence": 0.9,
+        "reasoning": "The supplier's performance is explicitly marked as 'degrading' over the last 30 days, which directly impacts replenishment and is the most likely cause for the current stockout of zero on-hand inventory."
+      },
+      "p90_stockout_date": "2026-04-14",
+      "citations": [
+        {
+          "source": "Hyndman carparts / Croston forecast",
+          "url": "https://zenodo.org/records/3994911",
+          "excerpt": "croston_sba model, P90 = 2026-04-14"
+        },
+        {
+          "source": "reorder policy (classical OR)",
+          "excerpt": "staleness = 0 days"
+        }
+      ],
+      "step_count": 9
+    }
+  },
+  "gold-018:9c270df63dec7b9c": {
+    "verdict": {
+      "correctness": 5,
+      "citation_faithfulness": 4,
+      "action_appropriateness": 5,
+      "pass": true,
+      "issues": [
+        "Minor: The 'reorder policy' citation lacks a URL/source link, though the excerpt is present. The Croston forecast citation is well-formed and supports the P90 stockout date claim."
+      ]
+    },
+    "cost_usd": 0.00131,
+    "case_id": "gold-018",
+    "response": {
+      "request_id": "3d0625a4-0c4f-4dde-a220-8d74b95c0b58",
+      "answer": "DIAGNOSIS: primary driver = supply (confidence 0.90)\nP90 STOCKOUT DATE: 2026-04-14\nRECOMMENDED ACTION: expedite\n",
+      "diagnosis": {
+        "primary_driver": "supply",
+        "confidence": 0.9,
+        "reasoning": "With on-hand inventory already at zero, the supplier's 'degrading' 30-day performance trend is the most direct cause of the inability to replenish stock and cover demand."
+      },
+      "p90_stockout_date": "2026-04-14",
+      "citations": [
+        {
+          "source": "Hyndman carparts / Croston forecast",
+          "url": "https://zenodo.org/records/3994911",
+          "excerpt": "croston_sba model, P90 = 2026-04-14"
+        },
+        {
+          "source": "reorder policy (classical OR)",
+          "excerpt": "staleness = 0 days"
+        }
+      ],
+      "step_count": 12
+    }
+  }
+}

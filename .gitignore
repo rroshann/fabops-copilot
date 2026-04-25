@@ -51,10 +51,10 @@ data/carparts.csv
 logs/
 *.log
 
-# Generated eval artifacts (produced by scripts; not committed)
+# Generated eval artifacts.
+# adversarial_set.json is local-only; gold_run.json + judge_cache.json are
+# tracked because REPORT §5.1 cites them as evaluation evidence.
 evals/adversarial_set.json
-evals/results/gold_run.json
-evals/results/judge_cache.json
 
 # Brainstorming session artifacts
 .superpowers/

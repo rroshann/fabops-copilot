@@ -39,7 +39,7 @@ You give it a part and a fab. For example:
 
 > "Why is part 10279876 at risk of stocking out at the Taiwan fab, and what should I do?"
 
-It runs a 9-node LangGraph state machine that:
+It runs an 8-node LangGraph state machine in production (a 9th `verify` self-critique node sits behind the `FABOPS_ENABLE_VERIFY=1` env flag) that:
 
 1. Pulls current inventory and the live reorder policy.
 2. Checks whether the policy is stale relative to the most recent demand history (the insight most naive pipelines skip).
@@ -57,11 +57,11 @@ You get back a short diagnosis card, a concrete recommended action, a set of cit
 
 The fastest way to understand this project is to open the [primary demo](https://main.d23s2e6xnypmh0.amplifyapp.com) and click three things:
 
-1. **"How it works"** in the header. It opens a modal that walks through the 9 nodes of the agent graph with plain-English descriptions of each, plus a two-column "real vs synthetic" data provenance summary.
+1. **"How it works"** in the header. It opens a modal that walks through the agent graph (8 nodes in the production fast path, 9 with verify enabled) with plain-English descriptions of each, plus a two-column "real vs synthetic" data provenance summary.
 2. **"+ browse 18 drift cases"** in the main panel. It opens a curated catalog of the 18 real gold-set drift cases (6 policy drift, 9 supply risk, 3 demand shift). Click any row and it runs the agent against that part immediately.
 3. **"catalog · 200 parts × 9 fabs"** next to it. The full 200-part inventory, searchable by prefix, each row expandable to show its 9 fabs with live `on_hand` numbers. Click a part ID or a specific fab to insert it into your query and compose your own question.
 
-During execution you will see a live 9-node panel animate through the graph as the agent runs. First cold call after a long idle is about 19 seconds. Warm calls typically land in 10 to 25 seconds, dominated by the Gemini Flash diagnose call.
+During execution you will see a live node panel animate through the graph as the agent runs (8 steps in the production fast path). First cold call after a long idle is about 19 seconds. Warm calls typically land in 10 to 25 seconds, dominated by the Gemini Flash diagnose call.
 
 ## Architecture
 
@@ -79,7 +79,8 @@ During execution you will see a live 9-node panel animate through the graph as t
                    │   Runtime Lambda (Python 3.9, arm64)    │
                    │   1024 MB, 180s, 42 MB zip              │
                    │                                         │
-                   │   LangGraph 9-node state machine:       │
+                   │   LangGraph 8-node state machine        │
+                   │   (+1 verify node, gated by env var):   │
                    │   entry -> check_policy_staleness       │
                    │         -> check_demand_drift           │
                    │         -> check_supply_drift           │
