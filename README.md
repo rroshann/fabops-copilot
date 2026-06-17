@@ -2,7 +2,7 @@
 
 > An agentic AI system that diagnoses why a semiconductor fab service part is at stockout risk and recommends an action, grounded in real SEC filings, real FRED macro signals, and a real intermittent-demand benchmark.
 
-By **[Roshan Siddartha](https://github.com/rroshann)** · Final project for **DS 5730-01 Context-Augmented Gen AI Apps** (Vanderbilt University, Spring 2026).
+By **[Roshan Siddartha Sivakumar](https://github.com/rroshann)** · Final project for **DS 5730-01 Context-Augmented Gen AI Apps** (Vanderbilt University, Spring 2026).
 
 ![Python](https://img.shields.io/badge/python-3.11%20local%20%7C%203.9%20Lambda-blue.svg)
 ![AWS](https://img.shields.io/badge/AWS-Lambda%20%7C%20DynamoDB%20%7C%20API%20Gateway-orange.svg)
@@ -281,6 +281,6 @@ The project applies context-augmented reasoning to an industrial operations prob
 
 ## Credits
 
-Built by [Roshan Siddartha](https://github.com/rroshann).
+Built by [Roshan Siddartha Sivakumar](https://github.com/rroshann).
 
 Real data from Rob Hyndman's `carparts` benchmark (via `expsmooth`), the US SEC EDGAR system, and the Federal Reserve Bank of St. Louis (FRED). LLMs from Google (Gemini 2.5 Flash, `gemini-embedding-001`) and Anthropic (Claude Haiku 4.5 as independent judge). Agent framework: LangGraph. Forecasting: Nixtla's `statsforecast`. MCP layer: the official `mcp` Python SDK. Hosted on AWS.
